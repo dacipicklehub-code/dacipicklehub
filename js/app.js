@@ -389,6 +389,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     return WEEKDAY_RATE;
   }
 
+  function isDateBlocked(dateStr) {
+    return BLOCKED_DATES.includes(dateStr);
+  }
+
   // Helper function to check if a slot is in the past
   function isSlotPast(dateKey, slot) {
     // Only check for past slots on today
