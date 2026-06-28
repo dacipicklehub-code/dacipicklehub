@@ -265,12 +265,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Helper function to get initials from a name
   function getInitials(name) {
     if (!name) return '?';
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
+    const initials = name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(word => word[0].toUpperCase());
+
+    if (initials.length === 0) return '?';
+    if (initials.length === 1) return initials[0];
+    return initials.slice(0, 3).join('');
   }
 
   // Helper function to get remaining time for pending slots (60 mins)
@@ -670,9 +673,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.openModal = function() {
     // Open the reference search modal (no selection required)
     const refInput = document.getElementById('searchRef');
-    if (refInput) refInput.value = '';
+    if (refInput) {
+      refInput.value = '';
+      attachKeyboardScroll(refInput);
+    }
     document.getElementById('bookingModal').classList.add('open');
-    setTimeout(() => { const el = document.getElementById('searchRef'); if (el) el.focus(); }, 120);
+    setTimeout(() => {
+      const el = document.getElementById('searchRef');
+      if (el) {
+        el.focus();
+        ensureInputVisible(el);
+      }
+    }, 120);
     updateCheckButtonState();
   };
 
@@ -740,14 +752,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // open modal
     document.getElementById('confirmModal').classList.add('open');
-    setTimeout(() => { if (nameEl) nameEl.focus(); }, 120);
+    setTimeout(() => {
+      if (nameEl) {
+        nameEl.focus();
+        ensureInputVisible(nameEl);
+      }
+    }, 120);
 
     // Remove old listeners and attach the global validation function
     if (nameEl) {
+      attachKeyboardScroll(nameEl);
       nameEl.removeEventListener('input', updateConfirmModalButtonState);
       nameEl.addEventListener('input', updateConfirmModalButtonState);
     }
     if (phoneEl) {
+      attachKeyboardScroll(phoneEl);
       phoneEl.removeEventListener('input', updateConfirmModalButtonState);
       phoneEl.addEventListener('input', updateConfirmModalButtonState);
     }
@@ -1596,6 +1615,29 @@ Phone: ${firstBooking.phone_number || ''}
   // Detect mobile/touch devices (Android, iOS, etc.)
   const isMobileDevice = () => {
     return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+  };
+
+  const attachKeyboardScroll = (inputEl) => {
+    if (!inputEl || inputEl.dataset.keyboardScrollAttached === 'true') return;
+    const scrollHandler = () => {
+      setTimeout(() => {
+        if (document.activeElement === inputEl) {
+          inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        }
+      }, 120);
+    };
+    inputEl.addEventListener('focus', scrollHandler);
+    inputEl.addEventListener('touchstart', scrollHandler);
+    inputEl.dataset.keyboardScrollAttached = 'true';
+  };
+
+  const ensureInputVisible = (inputEl) => {
+    if (!inputEl) return;
+    setTimeout(() => {
+      if (document.activeElement === inputEl) {
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+    }, 180);
   };
 
   // Close modal on overlay click (DISABLED on mobile/touch devices)
