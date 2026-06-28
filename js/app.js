@@ -241,11 +241,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
     const setViewportHeight = () => {
-      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+      const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--vh', `${viewportHeight * 0.01}px`);
     };
     setViewportHeight();
     window.addEventListener('resize', setViewportHeight);
     window.addEventListener('orientationchange', () => setTimeout(setViewportHeight, 150));
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', setViewportHeight);
+      window.visualViewport.addEventListener('scroll', setViewportHeight);
+    }
 
   function getRemainingTime(timestamp) {
     const now = Date.now();
@@ -1595,10 +1600,20 @@ Phone: ${firstBooking.phone_number || ''}
     if (!inputEl || inputEl.dataset.keyboardScrollAttached === 'true') return;
     const scrollHandler = () => {
       setTimeout(() => {
-        if (document.activeElement === inputEl) {
-          inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        if (document.activeElement !== inputEl) return;
+        const modal = inputEl.closest('.modal');
+        if (modal) {
+          const inputRect = inputEl.getBoundingClientRect();
+          const modalRect = modal.getBoundingClientRect();
+          const topGap = inputRect.top - modalRect.top;
+          const bottomGap = modalRect.bottom - inputRect.bottom;
+          if (topGap < 120 || bottomGap < 180) {
+            const scrollAmount = topGap - 120;
+            modal.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+          }
         }
-      }, 120);
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }, 220);
     };
     inputEl.addEventListener('focus', scrollHandler);
     inputEl.addEventListener('touchstart', scrollHandler);
@@ -1608,10 +1623,20 @@ Phone: ${firstBooking.phone_number || ''}
   const ensureInputVisible = (inputEl) => {
     if (!inputEl) return;
     setTimeout(() => {
-      if (document.activeElement === inputEl) {
-        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      if (document.activeElement !== inputEl) return;
+      const modal = inputEl.closest('.modal');
+      if (modal) {
+        const inputRect = inputEl.getBoundingClientRect();
+        const modalRect = modal.getBoundingClientRect();
+        const topGap = inputRect.top - modalRect.top;
+        const bottomGap = modalRect.bottom - inputRect.bottom;
+        if (topGap < 120 || bottomGap < 180) {
+          const scrollAmount = topGap - 120;
+          modal.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+        }
       }
-    }, 180);
+      inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }, 240);
   };
 
   // Close modal on overlay click (DISABLED on mobile/touch devices)
