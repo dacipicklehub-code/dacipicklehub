@@ -744,10 +744,6 @@
       .save-copy-checkbox { padding: 14px 15px; margin-top: 16px; gap: 13px; }
       .next-steps-card { padding: 16px; margin-top: 14px; gap: 11px; }
       .next-steps-list li { font-size: 0.91rem; }
-      
-      body { background: linear-gradient(135deg, #2f7f33 0%, #74b573 38%, #f4f6f4 68%, #d7ddd7 100%); }
-      nav, .hero-banner-image, .calendar-card, .table-panel, .cart-bar, .modal { box-shadow: none !important; }
-      .court-label { backdrop-filter: none; background: rgba(0,0,0,0.78); }
     }
     @media (max-width: 480px) {
       main { padding: 12px 12px 40px; }
