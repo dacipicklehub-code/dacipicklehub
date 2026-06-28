@@ -240,43 +240,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  try {
-    const result = await callBackendAPI('check-connection');
-    
-    if (dot) dot.style.background = "#4ade80";
-    if (dot) dot.style.boxShadow = "0 0 10px #4ade80";
-    if (label) label.textContent = "Connected";
-    if (label) label.style.color = "#4ade80";
-  } catch (err) {
-    console.error(err);
-    if (dot) dot.style.background = "#f87171";
-    if (label) label.textContent = "Offline Mode";
-    if (label) label.style.color = "#f87171";
-  }
+    const setViewportHeight = () => {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    };
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', () => setTimeout(setViewportHeight, 150));
 
-  // Booked slots cache for the current selectedDate
-  let bookedSlots = {};
-
-  // Check if a date is blocked from bookings
-  function isDateBlocked(dateStr) {
-    return BLOCKED_DATES.includes(dateStr);
-  }
-
-  // Helper function to get initials from a name
-  function getInitials(name) {
-    if (!name) return '?';
-    const initials = name
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(word => word[0].toUpperCase());
-
-    if (initials.length === 0) return '?';
-    if (initials.length === 1) return initials[0];
-    return initials.slice(0, 3).join('');
-  }
-
-  // Helper function to get remaining time for pending slots (60 mins)
   function getRemainingTime(timestamp) {
     const now = Date.now();
     const elapsed = now - timestamp;
