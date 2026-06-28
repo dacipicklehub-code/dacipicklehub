@@ -1,0 +1,133 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/create-payment.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/bookings.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/messenger.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/confirm-booking.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "about-us.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "privacy-policy.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "terms-of-service.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "contact-us.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "css/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "js/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.{png,jpeg,jpg,svg,gif}",
+      "use": "@vercel/static"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://vercel.app https://api.vercel.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=()"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/create-payment",
+      "dest": "api/create-payment.js"
+    },
+    {
+      "src": "/api/bookings",
+      "dest": "api/bookings.js"
+    },
+    {
+      "src": "/api/messenger",
+      "dest": "api/messenger.js"
+    },
+    {
+      "src": "/api/confirm-booking",
+      "dest": "api/confirm-booking.js"
+    },
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/about-us",
+      "dest": "/about-us.html"
+    },
+    {
+      "src": "/contact-us",
+      "dest": "/contact-us.html"
+    },
+    {
+      "src": "/privacy-policy",
+      "dest": "/privacy-policy.html"
+    },
+    {
+      "src": "/terms-of-service",
+      "dest": "/terms-of-service.html"
+    },
+    {
+      "src": "/maintenance",
+      "dest": "/maintenance.html"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="format-detection" content="telephone=no"/>
+<title>DACI Pickle Hub</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="preconnect"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="icon" href="/logo.jpeg" type="image/jpeg">
+
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/index.css">
+
+</head>
+
+<body>
+
+<script>
+
+</script>
+
+<nav>
+  <div class="nav-brand">
+    <img src="/logo.jpeg" alt="DACI Pickle Hub logo" class="nav-logo">
+    DACI <span>Pickle Hub</span>
+  </div>
+  <button id="openSearchBtn" class="hamburger" aria-label="Open search">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  <div class="nav-actions">
+    <button id="searchBookingBtn" class="btn-primary" aria-label="Search Booking">
+      <svg class="icon-search" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M11 4a7 7 0 1 0 4.95 11.95l4.54 4.54 1.41-1.41-4.54-4.54A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10A5 5 0 0 1 11 6z" />
+      </svg>
+      Search Booking
+    </button>
+  </div>
+</nav>
+
+<div class="hero-banner">
+  <img src="/banner.jpeg" alt="DACI Pickle Hub banner" class="hero-banner-image">
+</div>
+
+<main>
+  <div class="photo-grid">
+    <div class="main-photo">
+      <img src="/COURT.jpeg" alt="DACI Pickle Hub court view" class="main-photo-image">
+      <span class="court-label">📸 Court View</span>
+    </div>
+    <div class="photo-mini"></div>
+    <div class="photo-mini"></div>
+    <div class="photo-mini"></div>
+    <div class="photo-mini"></div>
+  </div>
+
+  <div class="venue-header">
+    <h1>Book a Court at DACI Pickle Hub</h1>
+    <p class="venue-motto">Building friendships, staying active, sharing good moments, and growing together—one game at a time. 💚</p>
+    <div class="venue-meta">
+      <span>📍 <a href="https://maps.app.goo.gl/JxxJwKDkynPEjM436" target="_blank" rel="noreferrer" style="color:#257C36;">Davao Alliance Bible College</a></span>
+      <span>🕒 Monday – Friday (4:00 PM – 10:00 PM) only allow that time slot</span>
+      <span>📞 <a href="tel:+639173075609" style="color:#257C36; text-decoration:none;">+63 917 307 5609</a></span>
+    </div>
+  </div>
+
+  <div class="pricing-banner">
+    <div class="rate">Monday – Friday (4:00 PM – 10:00 PM)</div>
+    <div class="rate">Saturday/Sunday (8:00 AM – 10:00 PM)</div>
+    <div class="note">Sunday: Ministry Partners</div>
+    <div style="margin-top: 12px; padding: 12px; background: rgba(37, 124, 54, 0.12); border-radius: 8px; font-size: 0.85em; color: #257C36; border-left: 3px solid #257C36;">📢 <strong>Hourly rate:</strong> ₱250/hour</div>
+  </div>
+
+  <div class="booking-section">
+    <div class="calendar-card">
+      <div class="cal-header">
+        <button class="cal-nav" id="prevBtn">&#8249;</button>
+        <h3 id="calMonthYear"></h3>
+        <button class="cal-nav" id="nextBtn">&#8250;</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="legend">
+        <div class="legend-title">Legend</div>
+        <div class="legend-item"><div class="dot dot-green"></div> Available</div>
+        <div class="legend-item"><div class="dot dot-pink"></div> Selected</div>
+        <div class="legend-item"><div class="dot dot-red"></div> Booked</div>
+      </div>
+    </div>
+
+    <div class="table-panel">
+        <div class="table-header">
+          <h2>📅 <span id="selectedDateLabel"></span></h2>
+          <div style="color:#A8AFB6;font-size:0.9rem;font-weight:600;">Tap available slots to select multiple.</div>
+          <button class="btn-primary" id="refreshBtn">Refresh</button>
+        </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Court 1</th>
+              <th>Court 2</th>
+            </tr>
+          </thead>
+          <tbody id="slotBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<section class="faq-section">
+  <div class="faq-container">
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item-new">
+      <button type="button" class="faq-toggle" aria-expanded="false">
+        <span class="faq-question">How to book?</span>
+        <span class="faq-icon">▼</span>
+      </button>
+      <div class="faq-answer">
+        <p>Simply go to our booking website and select your preferred date and time slot. Fill in your details and confirm your reservation.</p>
+        <p>COPY YOUR BOOKING REFERENCE CODE: <strong>DACI-0000000</strong></p>
+      </div>
+    </div>
+
+    <div class="faq-item-new">
+      <button type="button" class="faq-toggle" aria-expanded="false">
+        <span class="faq-question">Where to send payment?</span>
+        <span class="faq-icon">▼</span>
+      </button>
+      <div class="faq-answer">
+        <p>You can send or request payment in Messenger or you can scan QR along the booking process.</p>
+        <p>After payment, please send:</p>
+        <ul>
+          <li>Your Booking Reference Code (DACI-0000000)</li>
+          <li>A screenshot or photo of your <strong>GCash receipt</strong></li>
+        </ul>
+        <p>Send these details in Messenger for verification.</p>
+      </div>
+    </div>
+
+    <div class="faq-item-new">
+      <button type="button" class="faq-toggle" aria-expanded="false">
+        <span class="faq-question">What to do when you arrive?</span>
+        <span class="faq-icon">▼</span>
+      </button>
+      <div class="faq-answer">
+        <p>Just show your <strong>booking confirmation</strong> at the counter, and you're ready to play!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <h2>DACI <span>Pickle Hub</span></h2>
+      <p>Easy. Fast. Reliable Court Booking.</p>
+      <div class="social-links">
+        <a class="social-link" href="https://www.facebook.com/profile.php?id=61591229829491" target="_blank" rel="noreferrer" aria-label="Facebook">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M22.675 0h-21.35C.597 0 0 .597 0 1.333v21.333C0 23.403.597 24 1.325 24H12.82v-9.294H9.692V11.12h3.128V8.414c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.796.715-1.796 1.764v2.314h3.587l-.467 3.586h-3.12V24h6.116C23.403 24 24 23.403 24 22.667V1.333C24 .597 23.403 0 22.675 0z"/>
+          </svg>
+        </a>
+        <a class="social-link" href="https://www.instagram.com/picklesocial.ph/?hl=en" target="_blank" rel="noreferrer" aria-label="Instagram">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2Zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5A4.25 4.25 0 0 0 7.75 20.5h8.5A4.25 4.25 0 0 0 20.5 16.25v-8.5A4.25 4.25 0 0 0 16.25 3.5h-8.5ZM12 7.25a4.75 4.75 0 1 1 0 9.5 4.75 4.75 0 0 1 0-9.5Zm0 1.5a3.25 3.25 0 1 0 0 6.5 3.25 3.25 0 0 0 0-6.5Zm4.88-.88a1.12 1.12 0 1 1-2.24 0 1.12 1.12 0 0 1 2.24 0Z"/>
+          </svg>
+        </a>
+        <a class="social-link" href="mailto:davaoalliancecollegeinc@gmail.com" aria-label="Email">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 2v.511l-8 5.333-8-5.333V6h16Zm-16 12V8.155l7.404 4.936a1 1 0 0 0 1.192 0L20 8.155V18H4Z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-links">
+      <a href="/about-us">About Us</a>
+      <a href="/privacy-policy">Privacy Policy</a>
+      <a href="/terms-of-service">Terms of Service</a>
+      <a href="/contact-us">Contact Us</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    © 2026 DACI Pickle Hub. All rights reserved.
+    <br>
+    Developer: <a target="_blank" rel="noreferrer" style="color:#257C36;">Heoiscod</a>
+  </div>
+</footer>
+
+<div class="cart-bar" id="cartBar">
+  <div class="cart-info">
+    <div class="cart-count" id="cartCount">0 slots selected</div>
+    <div class="cart-total">Total: <span id="cartTotal">₱0</span></div>
+  </div>
+  <div class="cart-actions">
+    <button class="btn-clear" id="clearBtn">Clear</button>
+    <button class="btn-checkout" id="proceedBtn">Proceed →</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="bookingModal">
+  <div class="modal">
+    <div class="modal-top">
+      <div class="check-icon">📋</div>
+      <h2>Check Your Booking</h2>
+    </div>
+    <p class="subtitle">Review your selections and provide contact details</p>
+    
+    <div class="modal-progress" aria-hidden="true">
+      <div class="modal-progress-fill"></div>
+    </div>
+
+    <p class="subtitle">Enter your booking reference number to check your booking status</p>
+
+    <div class="form-group">
+      <label for="searchRef">Booking Reference Number</label>
+      <input type="text" id="searchRef" placeholder="E.G. 26FEB07A1B" autocomplete="off">
+      <div class="modal-hint">You received this when you made your booking</div>
+    </div>
+
+    <div id="bookingCheckResults" style="display:none;margin-top:16px;">
+      <div id="bookingResultsContent"></div>
+    </div>
+
+    <div style="margin-top:16px; padding:12px; background:rgba(37, 124, 54, 0.12); border-radius:8px; border-left:3px solid #257C36;">
+      <p style="margin:0; font-size:0.9em; color:#257C36;">
+        <strong>💬 Payment Note:</strong> If you've already paid, please send your Booking Reference and Receipt to us via Messenger for verification.
+      </p>
+    </div>
+
+    <button id="openMessengerBtn" class="btn-checkout" style="width:100%; margin-top:12px;">
+      Message us
+    </button>
+
+    <div class="modal-actions">
+      <button id="bookingCancelBtn" class="btn-cancel">Cancel</button>
+      <button class="btn-checkout" id="checkRefBtn" disabled>Check Status</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle" style="color:var(--accent);">Confirm Booking</h2>
+    <p class="subtitle">You're almost ready to play!</p>
+
+    <div style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="color:#A8AFB6">Date</div>
+        <div id="confirmDate" style="font-weight:700;color:var(--text-primary);">--</div>
+      </div>
+
+      <div id="confirmSlotsContainer" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:12px;">
+        <div style="color:#A8AFB6">Total (<span id="confirmCount">0</span> slot)</div>
+        <div id="confirmTotal" style="font-weight:800;color:var(--accent);">₱0</div>
+      </div>
+
+      <div style="background:linear-gradient(90deg, rgba(37,124,54,0.08), rgba(255,255,255,0.01));border-left:4px solid rgba(37,124,54,0.25);padding:12px;border-radius:8px;color:#E1E4E6;margin-bottom:12px;">
+        <div style="font-weight:700;color:#257C36;margin-bottom:6px;">⏱ Pending bookings expire in 60 minutes if not confirmed.</div>
+        <div style="color:#A8AFB6">Please complete payment promptly.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmName">Facebook Profile Name</label>
+        <input type="text" id="confirmName" placeholder="Enter your name" maxlength="30" pattern="[A-Za-z ]*" autocomplete="name" inputmode="text">
+        <div class="modal-hint">Up to 30 letters and spaces only.</div>
+      </div>
+      <div class="form-group">
+        <label for="confirmPhone">Phone Number</label>
+        <input type="tel" id="confirmPhone" placeholder="e.g., 917 123 4567" maxlength="10" pattern="\d{10}" inputmode="tel">
+        <div class="modal-hint">Enter exactly 10 digits, no symbols or spaces.</div>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:14px;">
+      <button id="confirmCancelBtn" class="btn-cancel">Cancel</button>
+      <button class="btn-confirm" id="confirmModalBtn" disabled>Next</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="successModal">
+  <div class="modal success-modal">
+    <div class="success-body-box">
+      <div class="success-download-card">
+        <div class="success-icon">
+          <svg width="78" height="78" viewBox="0 0 80 80" class="success-checkmark">
+            <circle cx="40" cy="40" r="36" fill="none" stroke="currentColor" stroke-width="3" opacity="0.18"></circle>
+            <polyline points="28,42 36,50 54,30" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+          </svg>
+        </div>
+        <h2 id="successTitle">Booking Submitted!</h2>
+        <p class="success-subtitle" id="successMessage">Click This and Save a copy of this confirmation. When you are ready, scan the QR code below to pay OR Message us .</p>
+
+        <div class="success-summary-grid">
+          <div class="summary-pill">
+            <span>Name</span>
+            <strong id="successName">—</strong>
+          </div>
+          <div class="summary-pill">
+            <span>Date</span>
+            <strong id="successDate">—</strong>
+          </div>
+        </div>
+
+        <div class="paid-total-card">
+          <span>Paid Total</span>
+          <strong id="successPaidTotal">—</strong>
+        </div>
+
+        <div class="success-bookings-list" id="successBookingItems"></div>
+
+        <div id="bookingRefCardContainer" class="booking-ref-card">
+          <div class="booking-ref-label">BOOKING REFERENCE:</div>
+          <div class="booking-ref-code" id="successRefDisplay">DACI-000000</div>
+        </div>
+
+        <div class="status-row">
+          <span class="pending-timer" id="successExpiryNote">Expires in 15 minutes to pay</span>
+        </div>
+      </div>
+
+      <label class="save-copy-checkbox save-copy-download">
+        <input type="checkbox" id="successSaveCopy" onchange="toggleSuccessPaymentExtension()" />
+        <div>
+          <div class="checkbox-label">Save a copy of this confirmation and I'm ready to pay</div>
+        </div>
+      </label>
+
+      <div id="successPaySection" class="success-pay-section">
+        <div class="scan-title">
+          <span>Scan to pay</span>
+          <span class="scan-title-label">Total Amount: <span id="scanTitleAmount" class="scan-title-amount">—</span></span>
+        </div>
+        <div id="successPayActionText" class="scan-note">Once checked, the scan-to-pay QR section will expand below.</div>
+        <div class="scan-card">
+          <div class="scan-card-title">Scan this QR to pay</div>
+          <img src="/GcashQR.jpg" alt="GCash QR code" />
+        </div>
+      </div>
+
+      <div class="next-steps-card">
+        <div class="next-steps-heading">NEXT STEPS</div>
+        <div class="next-steps-list">
+          <div>
+            <div class="next-step-title">1. Pay</div>
+            <div class="next-step-text">Scan the QR code above and complete your payment.</div>
+          </div>
+          <div>
+            <div class="next-step-title">2. Send payment proof</div>
+            <div class="next-step-text">Send the BOOKING REFERENCE and your GCash payment receipt through Messenger for verification.</div>
+          </div>
+          <div>
+            <div class="next-step-title">3. Wait for confirmation</div>
+            <div class="next-step-text">DACI Pickle Hub will confirm your booking after we verify your payment.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+          <div id="bookingRefCardContainerBottom" class="booking-ref-card" style="display:none;">
+            <div style="font-weight:700; margin-bottom:6px; color: #0f172a;">BOOKING REFERENCE:</div>
+            <div class="booking-ref-code" id="successRefDisplayBottom">DACI-000000</div>
+          </div>
+        </div>
+      </div>
+
+    <div class="modal-actions">
+      <button id="successDoneBtn" class="btn-confirm" style="flex:1;" disabled>Done</button>
+      <a href="https://www.facebook.com/profile.php?id=61591229829491" target="_blank" rel="noreferrer" class="btn-confirm" style="flex:1; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center;">Message Us On Facebook</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<script src="/js/app.js"></script>
+<script src="/js/index.js"></script>
+
+</body>
+</html>
