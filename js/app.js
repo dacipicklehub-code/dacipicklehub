@@ -82,6 +82,39 @@ function showToast(message) {
   }, 3000);
 }
 
+// Detect if user is in Facebook's in-app browser
+function isFacebookBrowser() {
+  const userAgent = navigator.userAgent || navigator.vendor || '';
+  return /FBAN|FBAV|FB/.test(userAgent);
+}
+
+// Open page in external browser (Chrome/Safari)
+window.openInExternalBrowser = function() {
+  const currentUrl = window.location.href;
+  if (/Android|webOS/i.test(navigator.userAgent)) {
+    // Try Android Chrome
+    window.location.href = 'intent://' + window.location.host + window.location.pathname + window.location.search + '#Intent;scheme=https;package=com.android.chrome;end';
+  } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    // Try iOS Safari - use the standard safari:// scheme if available
+    window.location.href = 'safari:' + currentUrl;
+  }
+};
+
+// Close browser notice modal
+window.closeBrowserNoticeModal = function() {
+  const modal = document.getElementById('browserNoticeModal');
+  if (modal) modal.classList.remove('open');
+};
+
+// Show browser notice modal
+window.showBrowserNoticeModal = function() {
+  const modal = document.getElementById('browserNoticeModal');
+  if (modal && isMobileDevice() && isFacebookBrowser()) {
+    modal.classList.add('open');
+  }
+};
+
+
 
 
 
@@ -183,6 +216,11 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener("DOMContentLoaded", async () => {
   // Remove direct Supabase client - now using backend API
   // Supabase keys are stored in backend environment variables for security
+
+  // Check and show browser notice if in Facebook's in-app browser on mobile
+  if (isMobileDevice() && isFacebookBrowser()) {
+    showBrowserNoticeModal();
+  }
 
   const dot = document.getElementById("statusDot");
   const label = document.getElementById("statusLabel");
