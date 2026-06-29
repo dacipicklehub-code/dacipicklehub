@@ -114,7 +114,7 @@ window.closeBrowserNoticeModal = function() {
 // Show browser notice modal
 window.showBrowserNoticeModal = function() {
   const modal = document.getElementById('browserNoticeModal');
-  if (modal && isMobileDevice() && isFacebookBrowser()) {
+  if (modal) {
     modal.classList.add('open');
   }
 };
@@ -222,10 +222,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Remove direct Supabase client - now using backend API
   // Supabase keys are stored in backend environment variables for security
 
-  // Check and show browser notice if in Facebook's in-app browser on mobile
-  if (isMobileDevice() && isFacebookBrowser()) {
-    showBrowserNoticeModal();
-  }
+  // Check and show browser notice immediately on mobile
+  setTimeout(() => {
+    if (isMobileDevice()) {
+      showBrowserNoticeModal();
+    }
+  }, 300);
 
   const dot = document.getElementById("statusDot");
   const label = document.getElementById("statusLabel");
@@ -1760,5 +1762,3 @@ Phone: ${firstBooking.phone_number || ''}
         }
       }
     }
-  }, 1000);
-});
