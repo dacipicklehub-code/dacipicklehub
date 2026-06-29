@@ -65,7 +65,7 @@
     <div class="venue-meta">
       <span>📍 <a href="https://maps.app.goo.gl/JxxJwKDkynPEjM436" target="_blank" rel="noreferrer" style="color:#257C36;">Davao Alliance Bible College</a></span>
       <span>🕒 Monday – Friday (4:00 PM – 10:00 PM) only allow that time slot</span>
-      <span>📞 <a href="tel:+639123456789" style="color:#257C36; text-decoration:none;">+63 912 345 6789</a></span>
+      <span>📞 <a href="tel:+639173075609" style="color:#257C36; text-decoration:none;">+63 917 307 5609</a></span>
     </div>
   </div>
 
@@ -377,6 +377,34 @@
     <div class="modal-actions">
       <button id="successDoneBtn" class="btn-confirm" style="flex:1;" disabled>Done</button>
       <a href="https://www.facebook.com/profile.php?id=61591229829491" target="_blank" rel="noreferrer" class="btn-confirm" style="flex:1; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center;">Message Us On Facebook</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="browserNoticeModal">
+  <div class="modal browser-notice-modal" style="max-width: 320px;">
+    <div style="text-align: center; padding: 20px;">
+      <div style="font-size: 2.5rem; margin-bottom: 16px;">⚠️</div>
+      <h2 style="color: #257C36; margin-bottom: 12px; font-size: 1.2rem;">Browser Notice</h2>
+      <p style="color: #A8AFB6; margin-bottom: 16px; font-size: 0.95rem; line-height: 1.5;">
+        You're inside Facebook's browser. For the best booking experience, please open this page in <strong style="color: #E1E4E6;">Safari</strong> or <strong style="color: #E1E4E6;">Chrome</strong>.
+      </p>
+      
+      <div style="background: rgba(37, 124, 54, 0.12); padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 3px solid #257C36;">
+        <div style="font-size: 0.85rem; color: #257C36;">
+          <div style="margin-bottom: 8px;">📱 <strong>How to open in external browser:</strong></div>
+          <div style="text-align: left; color: #A8AFB6; font-size: 0.8rem;">
+            <div style="margin: 6px 0;"><strong>1.</strong> Tap the <strong>⋯</strong> (three dots menu)</div>
+            <div style="margin: 6px 0;"><strong>2.</strong> Tap <strong>"Open in external browser"</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <a href="#" onclick="openInExternalBrowser(); return false;" class="btn-primary" style="display: block; margin-bottom: 10px; text-decoration: none; background: #257C36;">
+        🔗 Open in Chrome
+      </a>
+      
+      <button onclick="closeBrowserNoticeModal()" class="btn-cancel" style="width: 100%;">Continue Anyway</button>
     </div>
   </div>
 </div>
