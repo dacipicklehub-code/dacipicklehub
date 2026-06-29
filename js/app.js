@@ -82,6 +82,11 @@ function showToast(message) {
   }, 3000);
 }
 
+// Detect mobile/touch devices (Android, iOS, etc.)
+function isMobileDevice() {
+  return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+}
+
 // Detect if user is in Facebook's in-app browser
 function isFacebookBrowser() {
   const userAgent = navigator.userAgent || navigator.vendor || '';
@@ -1627,11 +1632,6 @@ Phone: ${firstBooking.phone_number || ''}
 
   window.verifyReceipt = function() {
     showToast('Payment processing via Messenger. Please send your booking reference and GCash receipt proof.');
-  };
-
-  // Detect mobile/touch devices (Android, iOS, etc.)
-  const isMobileDevice = () => {
-    return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
   };
 
   const attachKeyboardScroll = (inputEl) => {
