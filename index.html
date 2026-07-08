@@ -277,8 +277,8 @@
       </div>
       <div class="form-group">
         <label for="confirmPhone">Phone Number</label>
-        <input type="tel" id="confirmPhone" placeholder="e.g., 917 123 4567" maxlength="10" pattern="\d{10}" inputmode="tel">
-        <div class="modal-hint">Enter exactly 10 digits, no symbols or spaces.</div>
+        <input type="tel" id="confirmPhone" placeholder="e.g., 0917 123 4567 or +63 917 123 4567" maxlength="14" pattern="[0-9+ ]*" inputmode="tel">
+        <div class="modal-hint">Enter a Philippine number; 0 or +63 prefixes are normalized to 10 digits.</div>
       </div>
     </div>
 
@@ -345,13 +345,11 @@
         <div id="successPayActionText" class="scan-note">Once checked, the scan-to-pay QR section will expand below.</div>
         <div class="scan-card">
           <div class="scan-card-title">Scan this QR to pay</div>
-          <img src="GcashQR.svg" alt="GCash QR code" />
+          <img src="/GcashQR.svg" alt="GCash QR code" />
+          <p class="scan-note">Scan the QR code above and complete your payment.</p>
         </div>
-      </div>
 
-      <div class="next-steps-card">
-        <div class="next-steps-heading">NEXT STEPS</div>
-        <div class="next-steps-list">
+        <div class="next-steps-card" style="display: none;">
           <div>
             <div class="next-step-title">1. Pay</div>
             <div class="next-step-text">Scan the QR code above and complete your payment.</div>

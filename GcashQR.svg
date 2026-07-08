@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="450" height="450" viewBox="0 0 450 450">
+  <rect width="450" height="450" rx="24" ry="24" fill="#f5f5f5" stroke="#333" stroke-width="8" />
+  <text x="50%" y="44%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#2d3748">GCash QR</text>
+  <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#4a5568">Placeholder image</text>
+  <rect x="90" y="110" width="90" height="90" fill="#2d3748" />
+  <rect x="90" y="210" width="90" height="90" fill="#2d3748" />
+  <rect x="210" y="110" width="90" height="90" fill="#2d3748" />
+  <rect x="210" y="210" width="90" height="90" fill="#2d3748" />
+  <rect x="330" y="110" width="30" height="30" fill="#2d3748" />
+  <rect x="330" y="210" width="30" height="30" fill="#2d3748" />
+  <rect x="110" y="330" width="30" height="30" fill="#2d3748" />
+  <rect x="170" y="330" width="30" height="30" fill="#2d3748" />
+  <rect x="230" y="330" width="30" height="30" fill="#2d3748" />
+</svg>

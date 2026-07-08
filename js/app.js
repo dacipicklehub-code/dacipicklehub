@@ -32,7 +32,13 @@ function sanitizeName(value) {
 }
 
 function sanitizePhone(value) {
-  return value.replace(/\D+/g, '').slice(0, 10);
+  let digits = String(value).replace(/\D+/g, '');
+  if (digits.startsWith('63') && digits.length === 12) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith('0') && digits.length === 11) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 10);
 }
 
 function isValidConfirmName(value) {
@@ -260,6 +266,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadBookedSlotsForDate(dk);
     renderTable();
   }
+
+  window.refreshSlots = loadAndRenderTable;
 
   const WEEKDAY_SLOTS = [
     '4PM - 5PM',
@@ -593,6 +601,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   window.openConfirmModal = function() {
+    if (selectedSlots.size === 0) {
+      showToast('⚠️ Please select at least one time slot before proceeding.');
+      return;
+    }
+
     console.log('openConfirmModal called, selectedSlots:', [...selectedSlots]);
     
     const container = document.getElementById('confirmSlotsContainer');
@@ -604,7 +617,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const confirmBtn = document.getElementById('confirmModalBtn');
 
     if (!container || !dateEl || !countEl || !totalEl) {
-      console.error('Missing modal elements:', { container: !!container, dateEl: !!dateEl, countEl: !!countEl, totalEl: !!totalEl });
+      console.error('Missing confirm modal elements:', {
+        container: !!container,
+        dateEl: !!dateEl,
+        countEl: !!countEl,
+        totalEl: !!totalEl,
+        confirmModal: !!document.getElementById('confirmModal')
+      });
+      if (document.getElementById('confirmModal')) {
+        return;
+      }
       return openModal();
     }
 
@@ -676,6 +698,85 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.closeModal = function() {
     document.getElementById('bookingModal').classList.remove('open');
+  };
+
+  window.openSuccessModal = function() {
+    const modal = document.getElementById('successModal');
+    if (modal) modal.classList.add('open');
+  };
+
+  window.handleDoneBooking = function() {
+    closeSuccessModal();
+    selectedSlots.clear();
+    updateCart();
+    loadAndRenderTable();
+  };
+
+  window.toggleSuccessPaymentExtension = function() {
+    const checkbox = document.getElementById('successSaveCopy');
+    const paySection = document.getElementById('successPaySection');
+    const nextSteps = document.querySelector('.next-steps-card');
+    const bottomRef = document.getElementById('bookingRefCardContainerBottom');
+    if (!checkbox || !paySection || !nextSteps || !bottomRef) return;
+    const show = checkbox.checked;
+    paySection.style.display = show ? 'block' : 'none';
+    nextSteps.style.display = show ? 'grid' : 'none';
+    bottomRef.style.display = show ? 'block' : 'none';
+  };
+
+  window.populateSuccessModal = function() {
+    const nameEl = document.getElementById('successName');
+    const dateEl = document.getElementById('successDate');
+    const totalEl = document.getElementById('successPaidTotal');
+    const itemsEl = document.getElementById('successBookingItems');
+    const refEl = document.getElementById('successRefDisplay');
+    const refElBottom = document.getElementById('successRefDisplayBottom');
+    const expiryEl = document.getElementById('successExpiryNote');
+    const doneBtn = document.getElementById('successDoneBtn');
+    const saveCopyCheckbox = document.getElementById('successSaveCopy');
+    const paySection = document.getElementById('successPaySection');
+    const nextSteps = document.querySelector('.next-steps-card');
+    const bottomRef = document.getElementById('bookingRefCardContainerBottom');
+
+    const name = document.getElementById('confirmName')?.value || 'Guest';
+    const bookingRef = receiptBookingReference || `PKL-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
+    const totalAmount = receiptBookingTotal || [...selectedSlots].reduce((sum, key) => {
+      const parts = key.split('|');
+      return sum + getRate(parts[1], parts[0]);
+    }, 0);
+
+    if (nameEl) nameEl.textContent = name;
+    if (dateEl) dateEl.textContent = formatDateDisplay(selectedDate);
+    if (totalEl) totalEl.textContent = `₱${totalAmount.toLocaleString()}`;
+    if (itemsEl) {
+      itemsEl.innerHTML = [...selectedSlots].map(key => {
+        const parts = key.split('|');
+        const court = COURTS[Number(parts[2])] || 'Court';
+        const price = getRate(parts[1], parts[0]);
+        return `
+          <div class="success-booking-item">
+            <div class="success-booking-item-info">
+              <div class="success-booking-item-title">${court}</div>
+              <div class="success-booking-item-meta">${parts[1]}</div>
+            </div>
+            <div class="success-booking-item-right">
+              <div class="success-booking-item-price">₱${price}</div>
+              <span class="status-badge pending">PENDING</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    if (refEl) refEl.textContent = bookingRef;
+    if (refElBottom) refElBottom.textContent = bookingRef;
+    if (expiryEl) expiryEl.textContent = 'Expires in 60:00';
+    if (saveCopyCheckbox) saveCopyCheckbox.checked = false;
+    if (paySection) paySection.style.display = 'none';
+    if (nextSteps) nextSteps.style.display = 'none';
+    if (bottomRef) bottomRef.style.display = 'none';
+    if (doneBtn) doneBtn.disabled = false;
+
+    bookingSubmissionTime = Date.now();
   };
 
   window.closeSuccessModal = function() {
@@ -883,20 +984,65 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    const nameInput = document.getElementById('confirmName');
+    const phoneInput = document.getElementById('confirmPhone');
+    const name = nameInput ? sanitizeName(nameInput.value).trim() : '';
+    const phone = phoneInput ? sanitizePhone(phoneInput.value).trim() : '';
+
+    if (!isValidConfirmName(name) || !isValidConfirmPhone(phone)) {
+      showToast('⚠️ Please enter a valid name and 10-digit phone number');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Next';
+      }
+      return;
+    }
+
+    const bookingRef = `PKL-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
+    const bookings = [...selectedSlots].map(key => {
+      const [date, slot, courtIndex] = key.split('|');
+      const courtName = COURTS[Number(courtIndex)] || 'Court';
+      const price = getRate(slot, date);
+      return {
+        booking_date: date,
+        booking_time: slot,
+        time_slot: slot,
+        court: courtName,
+        court_name: courtName,
+        customer_name: name,
+        phone_number: phone,
+        reference_code: bookingRef,
+        status: 'pending',
+        price,
+        rate: price
+      };
+    });
+
     try {
+      const result = await callBackendAPI('bulk-insert-bookings', { bookings });
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'Booking save failed');
+      }
+
+      receiptBookingReference = bookingRef;
+      receiptBookingTotal = bookings.reduce((sum, booking) => sum + booking.price, 0);
       showToast('✅ Booking submitted!');
       closeConfirmModal();
-      if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Next';
-      }
+      populateSuccessModal();
+      openSuccessModal();
     } catch (err) {
       console.error('Booking error:', err);
-      showToast('Booking failed. Please try again.');
+      showToast(`Booking failed: ${err.message || 'Please try again.'}`);
       if (confirmBtn) {
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Next';
       }
+      return;
+    }
+
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Next';
     }
   };
 });
