@@ -739,7 +739,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const bottomRef = document.getElementById('bookingRefCardContainerBottom');
 
     const name = document.getElementById('confirmName')?.value || 'Guest';
-    const bookingRef = receiptBookingReference || `PKL-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
+    const bookingRef = receiptBookingReference || `DACI-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
     const totalAmount = receiptBookingTotal || [...selectedSlots].reduce((sum, key) => {
       const parts = key.split('|');
       return sum + getRate(parts[1], parts[0]);
@@ -998,7 +998,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const bookingRef = `PKL-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
+    const bookingRef = `DACI-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
     const bookings = [...selectedSlots].map(key => {
       const [date, slot, courtIndex] = key.split('|');
       const courtName = COURTS[Number(courtIndex)] || 'Court';
