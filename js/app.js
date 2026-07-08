@@ -10,21 +10,16 @@ let receiptBookingTotal = 0; // Total amount for current booking
 let receiptFile = null; // Receipt file upload (removed)
 let lastSubmissionTime = 0; // Track last submission timestamp for duplicate prevention
 let lastSubmissionSlots = []; // Track last submission slot keys for duplicate prevention
-const SOFT_OPENING_RATE = 250; // Soft opening rate per hour
 const WEEKDAY_RATE = 250; // Regular weekday rate (Mon-Fri)
 const WEEKEND_RATE = 250; // Regular weekend rate (Sat-Sun)
 
 // Blocked dates (YYYY-MM-DD format)
-const BLOCKED_DATES = [];
-
-// Soft opening period (dates where soft opening rates apply)
-const SOFT_OPENING_DATES = [
-  '2026-06-25',
-  '2026-06-26',
-  '2026-06-27'
+const BLOCKED_DATES = [
+  '2026-06-23', // June 23, 2026
+  '2026-06-24'  // June 24, 2026
 ];
 
-let isRegularRateActive = false; // Legacy flag - not used with new date-based pricing
+// Legacy flag removed - pricing is now based on weekday vs weekend
 
 // Form validation handler for confirm modal
 function sanitizeName(value) {
@@ -32,13 +27,7 @@ function sanitizeName(value) {
 }
 
 function sanitizePhone(value) {
-  let digits = String(value).replace(/\D+/g, '');
-  if (digits.startsWith('63') && digits.length === 12) {
-    digits = digits.slice(2);
-  } else if (digits.startsWith('0') && digits.length === 11) {
-    digits = digits.slice(1);
-  }
-  return digits.slice(0, 10);
+  return value.replace(/\D+/g, '').slice(0, 10);
 }
 
 function isValidConfirmName(value) {
@@ -88,60 +77,103 @@ function showToast(message) {
   }, 3000);
 }
 
-// Detect mobile/touch devices (Android, iOS, etc.)
-function isMobileDevice() {
-  return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
-}
 
-// Detect if user is in Facebook's in-app browser
-function isFacebookBrowser() {
-  const userAgent = navigator.userAgent || navigator.vendor || '';
-  return /FBAN|FBAV|FB/.test(userAgent);
-}
 
-// Open page in external browser (Chrome/Safari)
-window.openInExternalBrowser = function() {
-  const currentUrl = window.location.href;
-  if (/Android|webOS/i.test(navigator.userAgent)) {
-    // Try Android Chrome
-    window.location.href = 'intent://' + window.location.host + window.location.pathname + window.location.search + '#Intent;scheme=https;package=com.android.chrome;end';
-  } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-    // Try iOS Safari
-    window.location.href = 'safari:' + currentUrl;
+
+
+function populateSuccessModal() {
+  if (!searchedBookingData || searchedBookingData.length === 0) {
+    console.warn('No booking data to populate');
+    return;
   }
-};
 
-// Close browser notice modal
-window.closeBrowserNoticeModal = function() {
-  const modal = document.getElementById('browserNoticeModal');
+  const totalAmount = searchedBookingData.reduce((sum, b) => sum + (b.price || b.rate || 0), 0);
+  const firstBooking = searchedBookingData[0];
+  
+  // Populate basic info
+  document.getElementById('successName').textContent = firstBooking.customer_name || '—';
+  
+  let displayDate = 'N/A';
+  try {
+    if (firstBooking.booking_date) {
+      displayDate = formatDateDisplay(firstBooking.booking_date);
+    }
+  } catch (dateErr) {
+    displayDate = firstBooking.booking_date || 'N/A';
+  }
+  document.getElementById('successDate').textContent = displayDate;
+  document.getElementById('successPaidTotal').textContent = '₱' + totalAmount.toFixed(2);
+  document.getElementById('scanTitleAmount').textContent = '₱' + totalAmount.toFixed(2);
+  document.getElementById('successRefDisplay').textContent = searchedBookingReference;
+  
+  // Populate booking items (courts and times)
+  const courtGroups = {};
+  searchedBookingData.forEach(booking => {
+    const courtName = booking.court_name || booking.court || 'Court';
+    const timeSlot = booking.time_slot || booking.booking_time || 'Unknown time';
+    if (!courtGroups[courtName]) {
+      courtGroups[courtName] = [];
+    }
+    courtGroups[courtName].push(timeSlot);
+  });
+
+  const bookingItemsHtml = Object.entries(courtGroups).map(([court, times]) => {
+    const sortedTimes = times.slice().sort();
+    const timesHtml = sortedTimes.map((time, index) => {
+      const timeEmojis = ['🕚', '🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙'];
+      return `
+        <div style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+          <span>${timeEmojis[index % timeEmojis.length]}</span>
+          <span style="color:#f8fafc;font-size:0.95rem;">${time}</span>
+        </div>
+      `;
+    }).join('');
+    
+    return `
+      <div style="padding:12px;border-radius:12px;border:1px solid rgba(236,72,153,0.14);background:rgba(255,255,255,0.03);margin-bottom:10px;">
+        <div style="font-weight:700;color:#f8fafc;margin-bottom:8px;">🏟️ ${court}</div>
+        ${timesHtml}
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('successBookingItems').innerHTML = bookingItemsHtml;
+  
+  // Update expiry note
+  document.getElementById('successExpiryNote').textContent = 'Expires in 60 minutes to pay';
+}
+
+function openSuccessModal() {
+  populateSuccessModal();
+  const modal = document.getElementById('successModal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeSuccessModal() {
+  const modal = document.getElementById('successModal');
   if (modal) modal.classList.remove('open');
-};
+}
 
-// Show browser notice modal
-window.showBrowserNoticeModal = function() {
-  const modal = document.getElementById('browserNoticeModal');
-  if (modal) {
-    modal.classList.add('open');
-  }
-};
-
-window.getInitials = function(name) {
-  if (!name) return '?';
-  return String(name)
-    .split(' ')
-    .filter(Boolean)
-    .map(n => n[0] || '')
-    .slice(0, 3)
-    .join('')
-    .toUpperCase();
-};
-
-// Show mobile browser notice on page load
-window.addEventListener('load', () => {
-  if (isMobileDevice()) {
-    showBrowserNoticeModal();
-  }
+// Close modals when clicking on overlay
+document.addEventListener('DOMContentLoaded', function() {
+  const modals = ['aboutUsModal', 'privacyPolicyModal', 'termsModal', 'contactUsModal', 'successModal'];
+  
+  modals.forEach(modalId => {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          if (modalId === 'aboutUsModal') closeAboutUsModal();
+          else if (modalId === 'privacyPolicyModal') closePrivacyPolicyModal();
+          else if (modalId === 'termsModal') closeTermsModal();
+          else if (modalId === 'contactUsModal') closeContactUsModal();
+          else if (modalId === 'successModal') closeSuccessModal();
+        }
+      });
+    }
+  });
 });
+
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Remove direct Supabase client - now using backend API
@@ -203,18 +235,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-    const setViewportHeight = () => {
-      const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      document.documentElement.style.setProperty('--vh', `${viewportHeight * 0.01}px`);
-    };
-    setViewportHeight();
-    window.addEventListener('resize', setViewportHeight);
-    window.addEventListener('orientationchange', () => setTimeout(setViewportHeight, 150));
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', setViewportHeight);
-      window.visualViewport.addEventListener('scroll', setViewportHeight);
-    }
+  try {
+    const result = await callBackendAPI('check-connection');
+    
+    if (dot) dot.style.background = "#4ade80";
+    if (dot) dot.style.boxShadow = "0 0 10px #4ade80";
+    if (label) label.textContent = "Connected";
+    if (label) label.style.color = "#4ade80";
+  } catch (err) {
+    console.error(err);
+    if (dot) dot.style.background = "#f87171";
+    if (label) label.textContent = "Offline Mode";
+    if (label) label.style.color = "#f87171";
+  }
 
+  // Booked slots cache for the current selectedDate
+  let bookedSlots = {};
+
+  // Check if a date is blocked from bookings
+  function isDateBlocked(dateStr) {
+    return BLOCKED_DATES.includes(dateStr);
+  }
+
+  // Helper function to get initials from a name
+  function getInitials(name) {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  }
+
+  // Helper function to get remaining time for pending slots (60 mins)
   function getRemainingTime(timestamp) {
     const now = Date.now();
     const elapsed = now - timestamp;
@@ -227,7 +281,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Load booked slots from backend API for a specific dateKey (YYYY-MM-DD)
-  let bookedSlots = {};
   async function loadBookedSlotsForDate(dk) {
     bookedSlots = {};
     try {
@@ -241,21 +294,26 @@ document.addEventListener("DOMContentLoaded", async () => {
             const key = `${dk}|${row.time_slot}|${courtIndex}`;
 
             if (status === 'pending') {
+              // Reconstruct pending timer from backend `created_at` so the timer
+              // persists across page reloads. Use created_at fallback to now.
               let ts = Date.now();
               try {
                 if (row.created_at) ts = new Date(row.created_at).getTime() || Date.now();
               } catch (e) {
                 ts = Date.now();
               }
+              // Only set pending timer if still within 60 minutes window
               const sixtyMins = 60 * 60 * 1000;
               if ((Date.now() - ts) < sixtyMins) {
                 pendingSlotsWithTimer[key] = ts;
               } else {
+                // expired on backend; ensure no pending marker left
                 if (pendingSlotsWithTimer[key]) delete pendingSlotsWithTimer[key];
               }
               return;
             }
 
+            // Confirmed booking: mark as booked and clear any local pending marker
             bookedSlots[key] = row.customer_name || 'Unknown';
             if (pendingSlotsWithTimer[key]) delete pendingSlotsWithTimer[key];
           }
@@ -263,18 +321,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (e) {
       console.error('loadBookedSlotsForDate error', e);
+      // Don't block UI; show a subtle toast if connection failed
       showToast('Could not load bookings (offline)');
     }
   }
 
+  // Helper to load bookings then render table
   async function loadAndRenderTable() {
     const dk = dateKey(selectedDate);
     await loadBookedSlotsForDate(dk);
     renderTable();
   }
 
-  window.refreshSlots = loadAndRenderTable;
-
+  // Slot definitions: different schedules for weekdays (Mon-Fri) and weekends (Sat-Sun)
   const WEEKDAY_SLOTS = [
     '4PM - 5PM',
     '5PM - 6PM',
@@ -301,12 +360,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     '9PM - 10PM'
   ];
 
-  function getSlotsForDate(date) {
-    const day = date.getDay();
-    if (day === 0 || day === 6) {
-      return WEEKEND_SLOTS;
-    }
-    return WEEKDAY_SLOTS;
+  function getSlotsForDate(d) {
+    const dateObj = (typeof d === 'string' || typeof d === 'number') ? new Date(d) : d;
+    const day = dateObj.getDay(); // 0=Sun,1=Mon,...6=Sat
+    if (day >= 1 && day <= 5) return WEEKDAY_SLOTS;
+    return WEEKEND_SLOTS;
   }
 
   const COURTS = ['Court One', 'Court Two'];
@@ -332,35 +390,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   }
 
+  // Fixed rate per hour - based on weekday vs weekend
   function getRate(slot, dateStr) {
-    if (SOFT_OPENING_DATES.includes(dateStr)) {
-      return SOFT_OPENING_RATE;
-    }
-    
     const date = new Date(dateStr + 'T00:00:00');
-    const dayOfWeek = date.getDay();
-    
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return WEEKEND_RATE;
-    }
-    
+    const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+    // Weekends: Saturday (6) and Sunday (0)
+    if (dayOfWeek === 0 || dayOfWeek === 6) return WEEKEND_RATE;
+    // Weekdays: Monday-Friday
     return WEEKDAY_RATE;
   }
 
-  function isDateBlocked(dateStr) {
-    return BLOCKED_DATES.includes(dateStr);
-  }
-
+  // Helper function to check if a slot is in the past
   function isSlotPast(dateKey, slot) {
+    // Only check for past slots on today
     const selectedDateObj = new Date(selectedDate);
     const todayObj = new Date(today);
     const isToday = selectedDateObj.getFullYear() === todayObj.getFullYear() &&
                     selectedDateObj.getMonth() === todayObj.getMonth() &&
                     selectedDateObj.getDate() === todayObj.getDate();
 
-    if (!isToday) return false;
+    if (!isToday) return false; // Not today, so slot is not past
     if (!slot || typeof slot !== 'string') return false;
 
+    // Parse the start time from the slot (e.g., "1AM - 2AM" or "1:00 AM - 2:00 AM")
     const startTimeStr = slot.split(' - ')[0];
     const timeMatch = startTimeStr.match(/^(\d{1,2})(?::(\d{2}))?\s?(AM|PM)$/i);
     if (!timeMatch) return false;
@@ -370,17 +422,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     let hours = Number(hoursStr);
     let minutes = minsStr ? Number(minsStr) : 0;
 
+    // Convert to 24-hour format
     if (period === 'AM' && hours === 12) {
-      hours = 0;
+      hours = 0; // 12:XX AM is 00:XX
     } else if (period === 'PM' && hours !== 12) {
-      hours += 12;
+      hours += 12; // PM times add 12 (except 12 PM)
     }
 
+    // Create a time object for today at this slot's start time
     const slotTime = new Date(todayObj);
     slotTime.setHours(hours, minutes, 0, 0);
 
+    // Current time
     const now = new Date();
 
+    // Slot is past if its start time is before current time
     return slotTime <= now;
   }
 
@@ -492,6 +548,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.getElementById('slotBody');
     body.innerHTML = '';
 
+    // Check if the date is blocked
     if (isDateBlocked(dk)) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
@@ -506,8 +563,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const slots = getSlotsForDate(selectedDate);
-    slots.forEach(slot => {
+    const slotsForDate = getSlotsForDate(selectedDate);
+    slotsForDate.forEach(slot => {
       const tr = document.createElement('tr');
       
       const tdTime = document.createElement('td');
@@ -521,13 +578,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         const btn = document.createElement('button');
         btn.className = 'slot-btn';
 
+        // Check if slot is in the past (only for today)
         const pastSlot = isSlotPast(dk, slot);
 
+        // If the slot is booked in Supabase, mark as booked and show initials
         if (bookedSlots[key]) {
           btn.classList.add('slot-booked');
-          btn.textContent = window.getInitials(bookedSlots[key]);
+          btn.textContent = getInitials(bookedSlots[key]);
           btn.disabled = true;
         }
+        // Check if slot is pending (receipt uploaded, awaiting admin confirmation)
         else if (pendingSlotsWithTimer[key] && (Date.now() - pendingSlotsWithTimer[key]) < 60 * 60 * 1000) {
           btn.classList.add('slot-pending');
           btn.dataset.slotKey = key;
@@ -536,6 +596,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           btn.style.whiteSpace = 'pre-wrap';
           btn.disabled = true;
         } else if (pastSlot) {
+          // Disable past slots
           btn.classList.add('slot-past');
           btn.textContent = 'Past';
           btn.disabled = true;
@@ -548,6 +609,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         btn.onclick = () => {
+          // Prevent selecting a slot that just became booked or is in the past
           if (btn.disabled) return;
           if (selectedSlots.has(key)) {
             selectedSlots.delete(key);
@@ -590,28 +652,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   window.openModal = function() {
+    // Open the reference search modal (no selection required)
     const refInput = document.getElementById('searchRef');
-    if (refInput) {
-      refInput.value = '';
-      attachKeyboardScroll(refInput);
-    }
+    if (refInput) refInput.value = '';
     document.getElementById('bookingModal').classList.add('open');
-    setTimeout(() => {
-      const el = document.getElementById('searchRef');
-      if (el) {
-        el.focus();
-        ensureInputVisible(el);
-      }
-    }, 120);
+    setTimeout(() => { const el = document.getElementById('searchRef'); if (el) el.focus(); }, 120);
     updateCheckButtonState();
   };
 
+  // Open the confirm modal which summarizes selected slots and collects name/phone
   window.openConfirmModal = function() {
-    if (selectedSlots.size === 0) {
-      showToast('⚠️ Please select at least one time slot before proceeding.');
-      return;
-    }
-
     console.log('openConfirmModal called, selectedSlots:', [...selectedSlots]);
     
     const container = document.getElementById('confirmSlotsContainer');
@@ -623,21 +673,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const confirmBtn = document.getElementById('confirmModalBtn');
 
     if (!container || !dateEl || !countEl || !totalEl) {
-      console.error('Missing confirm modal elements:', {
-        container: !!container,
-        dateEl: !!dateEl,
-        countEl: !!countEl,
-        totalEl: !!totalEl,
-        confirmModal: !!document.getElementById('confirmModal')
-      });
-      if (document.getElementById('confirmModal')) {
-        return;
-      }
+      console.error('Missing modal elements:', { container: !!container, dateEl: !!dateEl, countEl: !!countEl, totalEl: !!totalEl });
       return openModal();
     }
 
+    // Populate date
     dateEl.textContent = formatDateDisplay(selectedDate);
 
+    // Build selected slots list
     container.innerHTML = '';
     const sel = [...selectedSlots];
     let total = 0;
@@ -659,9 +702,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       card.style.alignItems = 'center';
 
       const left = document.createElement('div');
-      left.innerHTML = `<div class="slot-row-court">${court}</div><div class="slot-row-time">${slot}</div>`;
+      left.innerHTML = `<div style="font-weight:700;color:#e5e7eb;">${court}</div><div style="color:#9ca3af;font-size:0.9rem;">${slot}</div>`;
       const right = document.createElement('div');
-      right.style.color = '#166534';
+      right.style.color = 'var(--accent)';
       right.style.fontWeight = '800';
       right.textContent = `₱${price}`;
 
@@ -673,128 +716,890 @@ document.addEventListener("DOMContentLoaded", async () => {
     countEl.textContent = sel.length;
     totalEl.textContent = `₱${total}`;
 
+    // Prefill name/phone from booking modal fields if available
     const existingName = document.getElementById('bookingName');
     const existingPhone = document.getElementById('bookingPhone');
     if (nameEl) nameEl.value = existingName ? sanitizeName(existingName.value) : '';
     if (phoneEl) phoneEl.value = existingPhone ? sanitizePhone(existingPhone.value) : '';
 
+    // open modal
     document.getElementById('confirmModal').classList.add('open');
-    setTimeout(() => {
-      if (nameEl) {
-        nameEl.focus();
-        ensureInputVisible(nameEl);
-      }
-    }, 120);
+    setTimeout(() => { if (nameEl) nameEl.focus(); }, 120);
 
+    // Remove old listeners and attach the global validation function
     if (nameEl) {
-      attachKeyboardScroll(nameEl);
       nameEl.removeEventListener('input', updateConfirmModalButtonState);
       nameEl.addEventListener('input', updateConfirmModalButtonState);
     }
     if (phoneEl) {
-      attachKeyboardScroll(phoneEl);
       phoneEl.removeEventListener('input', updateConfirmModalButtonState);
       phoneEl.addEventListener('input', updateConfirmModalButtonState);
     }
     
+    // Initial check to enable/disable button
     updateConfirmModalButtonState();
+    
+    console.log('openConfirmModal complete, button state:', {
+      disabled: confirmBtn.disabled,
+      nameValue: nameEl?.value,
+      phoneValue: phoneEl?.value
+    });
   };
 
   window.closeConfirmModal = function() { document.getElementById('confirmModal').classList.remove('open'); };
+
+  window.toggleSuccessPaymentExtension = async function() {
+    const checkbox = document.getElementById('successSaveCopy');
+    const section = document.getElementById('successPaySection');
+    const nextSteps = document.querySelector('.next-steps-card');
+    const messengerBtn = document.querySelector('.btn-messenger');
+    const bookingRefCard = document.getElementById('bookingRefCardContainer');
+    const bookingRefCardBottom = document.getElementById('bookingRefCardContainerBottom');
+    const doneBtn = document.getElementById('successDoneBtn');
+    if (!checkbox || !section || !nextSteps) return;
+    if (checkbox.checked) {
+      section.style.display = 'block';
+      nextSteps.style.display = 'grid';
+      if (messengerBtn) messengerBtn.style.display = 'inline-flex';
+      if (bookingRefCard) bookingRefCard.style.display = 'block';
+      if (bookingRefCardBottom) bookingRefCardBottom.style.display = 'block';
+      if (doneBtn) doneBtn.disabled = false;
+    } else {
+      section.style.display = 'none';
+      nextSteps.style.display = 'none';
+      if (messengerBtn) messengerBtn.style.display = 'none';
+      if (bookingRefCard) bookingRefCard.style.display = 'none';
+      if (bookingRefCardBottom) bookingRefCardBottom.style.display = 'none';
+      if (doneBtn) doneBtn.disabled = true;
+    }
+  };
+
+  async function downloadBookingConfirmationImage() {
+    const target = document.querySelector('.success-download-card') || document.querySelector('.success-body-box');
+    if (!target || !window.html2canvas) {
+      console.warn('Cannot download booking image: target or html2canvas missing');
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(target, {
+        backgroundColor: '#08090d',
+        scale: Math.min(2, window.devicePixelRatio || 1)
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = 'BookingConfirmation.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('✅ Booking confirmation image downloaded');
+    } catch (err) {
+      console.error('Booking image download failed', err);
+      showToast('❌ Failed to download booking image');
+    }
+  }
+
+
+  function renderSuccessBookingItems(entries) {
+    const container = document.getElementById('successBookingItems');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!entries || entries.length === 0) return;
+
+    const grouped = entries.reduce((acc, entry) => {
+      const courtName = entry.court_name || entry.court || 'Court';
+      const timeText = entry.booking_time || entry.time_slot || '';
+      const date = entry.booking_date || '';
+      const key = `${courtName}||${timeText}||${date}`;
+      if (!acc[key]) {
+        acc[key] = {
+          courtName,
+          timeText,
+          count: 0,
+          amount: 0,
+          status: (entry.status || 'pending').toUpperCase()
+        };
+      }
+      acc[key].count += 1;
+      acc[key].amount += (entry.price || entry.rate || 0);
+      return acc;
+    }, {});
+
+    Object.values(grouped).forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'success-booking-item';
+      row.innerHTML = `
+        <div class="success-booking-item-info">
+          <div class="success-booking-item-title">${item.courtName}${item.count > 1 ? ` ×${item.count}` : ''}</div>
+          <div class="success-booking-item-meta">${item.timeText || '—'}</div>
+        </div>
+        <div class="success-booking-item-right">
+          <div class="success-booking-item-price">₱${item.amount.toLocaleString()}</div>
+          <span class="status-badge pending">${item.status}</span>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  window.openBookingSubmittedModal = function(reference, totalAmount) {
+    receiptBookingReference = reference;
+    receiptBookingTotal = totalAmount;
+
+    const titleEl = document.getElementById('successTitle');
+    const messageEl = document.getElementById('successMessage');
+    const nameEl = document.getElementById('successName');
+    const courtEl = document.getElementById('successCourt');
+    const dateEl = document.getElementById('successDate');
+    const timeEl = document.getElementById('successTime');
+    const paidTotalEl = document.getElementById('successPaidTotal');
+    const refCodeEl = document.getElementById('successRefDisplay');
+    const refCodeBottomEl = document.getElementById('successRefDisplayBottom');
+    const statusEl = document.getElementById('successBookingStatus');
+    const expiryEl = document.getElementById('successExpiryNote');
+    const saveCopyCheckbox = document.getElementById('successSaveCopy');
+    const paySection = document.getElementById('successPaySection');
+    const actionText = document.getElementById('successPayActionText');
+
+    if (titleEl) titleEl.textContent = 'Booking Submitted!';
+    if (messageEl) messageEl.textContent = 'Save a copy of this confirmation. When you are ready, scan to pay and upload your receipt proof.';
+    if (refCodeEl) refCodeEl.textContent = reference;
+    if (refCodeBottomEl) refCodeBottomEl.textContent = reference;
+    if (statusEl) statusEl.textContent = 'PENDING';
+    if (expiryEl) expiryEl.textContent = 'Expires in 4 hours if not confirmed';
+    if (actionText) actionText.textContent = 'Check the box to reveal the scan-to-pay section and upload your receipt proof.';
+
+    const messengerBtn = document.querySelector('.btn-messenger');
+    if (messengerBtn) {
+      const encodedRef = encodeURIComponent(`Booking Reference: ${reference}`);
+      messengerBtn.href = `https://www.messenger.com/t/1070406479496408?ref=${encodedRef}`;
+    }
+    if (saveCopyCheckbox) saveCopyCheckbox.checked = false;
+    if (paySection) paySection.style.display = 'none';
+    const nextStepsCard = document.querySelector('.next-steps-card');
+    if (nextStepsCard) nextStepsCard.style.display = 'none';
+    if (messengerBtn) messengerBtn.style.display = 'none';
+
+    const bookingEntries = [...pendingBookingEntries];
+    const successName = bookingEntries[0]?.customer_name || '';
+    const successCourt = bookingEntries[0]?.court_name || bookingEntries[0]?.court || '';
+    const successDate = bookingEntries[0]?.booking_date ? formatDateDisplay(bookingEntries[0].booking_date) : '';
+    const successTime = bookingEntries[0]?.booking_time || bookingEntries[0]?.time_slot || '';
+    const successPaidTotal = `₱${totalAmount.toLocaleString()}`;
+
+    if (nameEl) nameEl.textContent = successName;
+    if (courtEl) courtEl.textContent = successCourt;
+    if (dateEl) dateEl.textContent = successDate;
+    if (timeEl) timeEl.textContent = successTime;
+    if (paidTotalEl) paidTotalEl.textContent = successPaidTotal;
+    const scanTitleAmountEl = document.getElementById('scanTitleAmount');
+    if (scanTitleAmountEl) scanTitleAmountEl.textContent = successPaidTotal;
+
+    renderSuccessBookingItems(bookingEntries);
+    document.getElementById('successModal').classList.add('open');
+    bookingSubmissionTime = Date.now(); // Start 15-minute payment timer when modal opens
+  };
+
+  window.removeSlot = function(key) {
+    selectedSlots.delete(key);
+    updateCart();
+    loadAndRenderTable();
+    
+    if (selectedSlots.size === 0) {
+      closeModal();
+      showToast('All slots removed');
+    } else {
+      openModal(); // Re-render modal
+    }
+  };
 
   window.closeModal = function() {
     document.getElementById('bookingModal').classList.remove('open');
   };
 
-  window.openSuccessModal = function() {
-    const modal = document.getElementById('successModal');
-    if (modal) modal.classList.add('open');
+  window.closeSuccessModal = function() {
+    document.getElementById('successModal').classList.remove('open');
+    bookingSubmissionTime = null; // Reset timer when modal closes
   };
 
-  window.handleDoneBooking = function() {
+  window.copyBookingReference = function() {
+    // Copy functionality disabled
+  };
+
+  window.handleDoneBooking = async function() {
+    const currentRef = receiptBookingReference;
+    
+    // Close the success modal and return to dashboard
     closeSuccessModal();
+    
+    // Show message with booking reference
+    if (currentRef) {
+      showToast(`📋 Booking Reference: ${currentRef} • Complete your payment via Messenger`);
+    }
+    
+    // Clear pending entries for next booking
+    receiptBookingReference = '';
+    receiptBookingTotal = 0;
+    pendingBookingEntries = [];
     selectedSlots.clear();
-    updateCart();
-    loadAndRenderTable();
+    
+    // Clear input fields
+    const refEl = document.getElementById('searchRef');
+    if (refEl) refEl.value = '';
+    
+    // Reload the table to show the new booking in pending or confirmed state
+    await loadAndRenderTable();
+    
+    // Refresh the site
+    setTimeout(() => {
+      location.reload();
+    }, 500);
   };
 
-  window.toggleSuccessPaymentExtension = function() {
-    const checkbox = document.getElementById('successSaveCopy');
-    const paySection = document.getElementById('successPaySection');
-    const nextSteps = document.querySelector('.next-steps-card');
-    const bottomRef = document.getElementById('bookingRefCardContainerBottom');
-    if (!checkbox || !paySection || !nextSteps || !bottomRef) return;
-    const show = checkbox.checked;
-    paySection.style.display = show ? 'block' : 'none';
-    nextSteps.style.display = show ? 'grid' : 'none';
-    bottomRef.style.display = show ? 'block' : 'none';
+  // Admin function to confirm a pending booking and copy confirmation message
+  window.confirmBooking = async function(referenceCode, bookingDetails) {
+    try {
+      // Update booking status to confirmed
+      const result = await callBackendAPI('confirm-booking', { reference_code: referenceCode });
+      
+      if (!result.success || result.updated === 0) {
+        showToast('❌ Could not confirm booking. Please try again.');
+        return;
+      }
+
+      // Get all bookings for this reference to build complete confirmation
+      const bookings = result.bookings || [];
+      const firstBooking = bookings[0] || bookingDetails || {};
+      const customerName = firstBooking.customer_name || 'Guest';
+      const totalAmount = bookings.reduce((sum, b) => sum + (b.price || b.rate || 0), 0);
+      const bookingDate = firstBooking.booking_date || 'N/A';
+      
+      // Group bookings by court
+      const slotsByCount = {};
+      const timeSlots = {};
+      
+      bookings.forEach(booking => {
+        const court = booking.court_name || booking.court || 'Court';
+        if (!slotsByCount[court]) {
+          slotsByCount[court] = [];
+        }
+        const timeSlot = booking.time_slot || booking.booking_time || '';
+        slotsByCount[court].push(timeSlot);
+      });
+
+      // Build formatted confirmation message
+      let courtSections = '';
+      const courtOrder = ['Court One', 'Court Two'];
+      courtOrder.forEach(court => {
+        if (slotsByCount[court] && slotsByCount[court].length > 0) {
+          const slots = slotsByCount[court];
+          const emoji = court === 'Court One' ? '🏟️' : '🏟️';
+          courtSections += `\n${emoji} ${court}\n`;
+          
+          const timeEmojis = ['🕚', '🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙'];
+          slots.forEach((slot, idx) => {
+            const emoji = timeEmojis[idx % timeEmojis.length];
+            courtSections += `${emoji} ${slot}\n`;
+          });
+        }
+      });
+
+      const confirmationMessage = `BOOKING CONFIRMATION
+
+Hello ${customerName},
+
+Thank you for booking with Pickle Social - Cebu! Your reservation has been successfully confirmed. ✅
+
+Name: ${firstBooking.customer_name || ''}
+Phone: ${firstBooking.phone_number || ''}
+📌 Booking Reference: ${referenceCode}
+💳 Total Paid: ₱${totalAmount.toLocaleString()}
+📅 Date: ${bookingDate}${courtSections}`;
+
+      // Copy to clipboard
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(confirmationMessage);
+        showToast('✅ Booking confirmed! Message copied to clipboard.');
+      } else {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = confirmationMessage;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('✅ Booking confirmed! Message copied to clipboard.');
+      }
+
+      // Reload table to update status
+      await loadAndRenderTable();
+    } catch (err) {
+      console.error('Error confirming booking:', err);
+      showToast('❌ Error confirming booking. Please try again.');
+    }
   };
 
-  window.populateSuccessModal = function() {
-    const nameEl = document.getElementById('successName');
-    const dateEl = document.getElementById('successDate');
-    const totalEl = document.getElementById('successPaidTotal');
-    const itemsEl = document.getElementById('successBookingItems');
-    const refEl = document.getElementById('successRefDisplay');
-    const refElBottom = document.getElementById('successRefDisplayBottom');
-    const expiryEl = document.getElementById('successExpiryNote');
-    const doneBtn = document.getElementById('successDoneBtn');
-    const saveCopyCheckbox = document.getElementById('successSaveCopy');
-    const paySection = document.getElementById('successPaySection');
-    const nextSteps = document.querySelector('.next-steps-card');
-    const bottomRef = document.getElementById('bookingRefCardContainerBottom');
+  window.submitBooking = async function() {
+    console.log('submitBooking called, selectedSlots:', [...selectedSlots]);
+    
+    // IMMEDIATELY disable button to prevent rapid clicks
+    const confirmBtn = document.getElementById('confirmBtn') || document.getElementById('confirmModalBtn');
+    if (confirmBtn && confirmBtn.disabled) {
+      console.log('Button already disabled, ignoring duplicate click');
+      showToast('⏱️ Please wait - your booking is being submitted...');
+      return;
+    }
+    
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Processing...';
+      console.log('Button disabled immediately');
+    }
+    
+    // Require slots to be selected
+    if (selectedSlots.size === 0) {
+      showToast('⚠️ Please select at least one time slot');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Next';
+      }
+      return;
+    }
 
-    const name = document.getElementById('confirmName')?.value || 'Guest';
-    const bookingRef = receiptBookingReference || `DACI-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
-    const totalAmount = receiptBookingTotal || [...selectedSlots].reduce((sum, key) => {
-      const parts = key.split('|');
-      return sum + getRate(parts[1], parts[0]);
-    }, 0);
+    // Read values from either the detailed booking modal or the compact confirm modal
+    // Prefer values from the confirm modal when present (user-filled there)
+    const nameField = document.getElementById('confirmName') || document.getElementById('bookingName');
+    const phoneField = document.getElementById('confirmPhone') || document.getElementById('bookingPhone');
+    const notesField = document.getElementById('bookingNotes');
 
-    if (nameEl) nameEl.textContent = name;
-    if (dateEl) dateEl.textContent = formatDateDisplay(selectedDate);
-    if (totalEl) totalEl.textContent = `₱${totalAmount.toLocaleString()}`;
-    if (itemsEl) {
-      itemsEl.innerHTML = [...selectedSlots].map(key => {
-        const parts = key.split('|');
-        const court = COURTS[Number(parts[2])] || 'Court';
-        const price = getRate(parts[1], parts[0]);
+    const name = nameField ? nameField.value.trim() : '';
+    const phone = phoneField ? phoneField.value.trim() : '';
+    const notes = notesField ? notesField.value.trim() : '';
+
+    console.log('Form values:', { name, phone, notes });
+
+    // Require name and phone
+    if (!name || !phone) {
+      showToast('⚠️ Please fill in your name and phone');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Next';
+      }
+      return;
+    }
+
+    // Validate sanitized values
+    if (!isValidConfirmName(name)) {
+      showToast('⚠️ Name must be 1-30 letters and spaces only');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Next';
+      }
+      return;
+    }
+    if (!isValidConfirmPhone(phone)) {
+      showToast('⚠️ Phone must be exactly 10 digits');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Next';
+      }
+      return;
+    }
+
+    // Duplicate prevention: Check if this is the same submission within 60 seconds
+    const currentSlots = [...selectedSlots].sort(); // Sort for consistent comparison
+    const now = Date.now();
+    const timeSinceLastSubmission = now - lastSubmissionTime;
+    const slotsMatch = currentSlots.length === lastSubmissionSlots.length && 
+                       currentSlots.every((slot, idx) => slot === lastSubmissionSlots[idx]);
+
+    console.log('Duplicate check:', { slotsMatch, timeSinceLastSubmission, lastSubmissionSlots, currentSlots });
+
+    if (slotsMatch && timeSinceLastSubmission < 60000 && lastSubmissionSlots.length > 0) {
+      console.log('DUPLICATE DETECTED! Blocking submission');
+      alert('⚠️ This time slot is no longer available.\n\nAnother player has already reserved your selected date and time. Please refresh your browser and choose a different available date or time slot.\n\nThank you for your understanding.');
+      showToast('⏱️ Please wait before submitting again');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Next';
+      }
+      return;
+    }
+
+    // Update submission tracking IMMEDIATELY to prevent rapid duplicate clicks
+    // This must happen before any async operations so rapid clicks are caught
+    const previousSubmissionTime = lastSubmissionTime;
+    const previousSubmissionSlots = lastSubmissionSlots;
+    lastSubmissionTime = Date.now();
+    lastSubmissionSlots = [...currentSlots]; // Use currentSlots (already sorted)
+    
+    console.log('Submission tracking updated:', { lastSubmissionTime, lastSubmissionSlots });
+
+    try {
+      // Generate booking reference
+      const refCode = 'PKL-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+      // Prepare booking data and keep it pending until receipt verification
+      pendingBookingEntries = [...selectedSlots].map(key => {
+        const [date, slot, courtIndex] = key.split('|');
+        const payload = {
+          reference_code: refCode,
+          customer_name: name,
+          phone_number: '+63' + phone.replace(/\D/g, ''),
+          booking_date: date,
+          booking_time: slot,
+          time_slot: slot,
+          court_name: COURTS[parseInt(courtIndex)],
+          court: COURTS[parseInt(courtIndex)],
+          price: getRate(slot, date),
+          rate: getRate(slot, date),
+          status: 'pending',
+          fromExistingBooking: false,
+          persistedInDb: false
+        };
+        // Email field removed from the form; do not include customer_email here
+        if (notes) payload.notes = notes;
+        return payload;
+      });
+
+      const totalAmount = pendingBookingEntries.reduce((s, b) => s + (b.price || 0), 0);
+
+      // Pre-check: Verify all selected slots are still available before saving
+      const verifySlots = async () => {
+        const uniqueDates = [...new Set(pendingBookingEntries.map(e => e.booking_date))];
+        
+        for (const date of uniqueDates) {
+          try {
+            const { bookings } = await callBackendAPI('get-booked-slots', { bookingDate: date });
+            const bookedSlots = new Set();
+            
+            // Add confirmed and valid pending slots to booked set
+            bookings.forEach(b => {
+              if (b.status === 'confirmed') {
+                bookedSlots.add(`${b.time_slot}|${b.court}`);
+              } else if (b.status === 'pending') {
+                // Check if pending slot is still within the 60-minute window
+                const createdAt = new Date(b.created_at).getTime();
+                const now = Date.now();
+                const expiresAt = createdAt + (60 * 60 * 1000); // 60-minute hold
+                if (now < expiresAt) {
+                  bookedSlots.add(`${b.time_slot}|${b.court}`);
+                }
+              }
+            });
+            
+            // Check if any of our selected slots for this date are already booked
+            const slotsForDate = pendingBookingEntries.filter(e => e.booking_date === date);
+            for (const entry of slotsForDate) {
+              const slotKey = `${entry.time_slot}|${entry.court}`;
+              if (bookedSlots.has(slotKey)) {
+                return false; // Slot is unavailable
+              }
+            }
+          } catch (err) {
+            console.error('Error verifying slot availability:', err);
+            return false;
+          }
+        }
+        
+        return true; // All slots are available
+      };
+
+      // Verify slots before saving
+      const slotsAvailable = await verifySlots();
+      if (!slotsAvailable) {
+        showToast('⚠️ This time slot is no longer available.\n\nAnother player has already reserved your selected date and time. Please refresh your browser and choose a different available date or time slot.\n\nThank you for your understanding.');
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Next';
+        }
+        return;
+      }
+
+      // Persist pending booking entries to Supabase immediately so the admin dashboard can show them
+      try {
+        const bookingsToSave = pendingBookingEntries.map(entry => ({
+          booking_date: entry.booking_date,
+          booking_time: entry.booking_time,
+          time_slot: entry.time_slot,
+          court: entry.court,
+          court_name: entry.court_name,
+          customer_name: entry.customer_name,
+          phone_number: entry.phone_number,
+          reference_code: entry.reference_code,
+          status: entry.status,
+          price: entry.price,
+          rate: entry.rate,
+          notes: entry.notes
+        }));
+
+        const insertResult = await callBackendAPI('bulk-insert-bookings', { bookings: bookingsToSave });
+        if (!insertResult.success) {
+          throw new Error(insertResult.error || 'Failed to save pending booking');
+        }
+
+        pendingBookingEntries.forEach(entry => {
+          entry.persistedInDb = true;
+        });
+      } catch (err) {
+        console.error('Error saving pending booking:', err);
+        // Restore previous submission tracking if save failed (allow retry)
+        lastSubmissionTime = previousSubmissionTime;
+        lastSubmissionSlots = previousSubmissionSlots;
+        console.log('Submission tracking restored due to error:', { lastSubmissionTime, lastSubmissionSlots });
+        
+        alert('⚠️ This time slot is no longer available.\n\nAnother player has already reserved your selected date and time. Please refresh your browser and choose a different available date or time slot.\n\nThank you for your understanding.');
+        showToast('⚠️ This time slot is no longer available.\n\nAnother player has already reserved your selected date and time. Please refresh your browser and choose a different available date or time slot.\n\nThank you for your understanding.');
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Next';
+        }
+        return;
+      }
+
+      // Mark selected slots as pending with 60-minute timer
+      selectedSlots.forEach(key => {
+        const [date, slot, courtIndex] = key.split('|');
+        const slotKey = `${date}|${slot}|${courtIndex}`;
+        pendingSlotsWithTimer[slotKey] = Date.now(); // 60-minute pending timer
+      });
+      
+      startPendingPoll(); // Start polling to detect admin confirmations
+
+      // Close booking/confirm modal and show the booking submitted summary
+      closeModal();
+      closeConfirmModal();
+      openBookingSubmittedModal(refCode, totalAmount);
+
+      showToast('✅ Booking submitted! Save a copy and proceed to scan payment.');
+
+    } catch (err) {
+      console.error('Booking error:', err);
+      showToast('Booking failed. Please try again.');
+    } finally {
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Next';
+        }
+    }
+  };
+
+  function updateConfirmButtonState() {
+    const confirmBtn = document.getElementById('confirmBtn');
+    const nameEl = document.getElementById('bookingName');
+    const phoneEl = document.getElementById('bookingPhone');
+    if (!confirmBtn || !nameEl || !phoneEl) return;
+    const name = nameEl.value.trim();
+    const phone = phoneEl.value.trim();
+    confirmBtn.disabled = !(name && phone);
+  }
+
+  // new: enable/disable the 'Check Status' button based on input
+  function updateCheckButtonState() {
+    const btn = document.getElementById('checkRefBtn');
+    const ref = document.getElementById('searchRef');
+    if (!btn) return;
+    btn.disabled = !ref || !ref.value.trim();
+  }
+
+  const searchInputEl = document.getElementById('searchRef');
+  if (searchInputEl) {
+    searchInputEl.addEventListener('input', updateCheckButtonState);
+    searchInputEl.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        const btn = document.getElementById('checkRefBtn');
+        if (btn && !btn.disabled) checkReference();
+      }
+    });
+  }
+
+    // Wire booking form inputs to enable/disable the Confirm button
+    const bookingNameEl = document.getElementById('bookingName');
+    const bookingEmailEl = document.getElementById('bookingEmail');
+    const bookingPhoneEl = document.getElementById('bookingPhone');
+    const bookingNotesEl = document.getElementById('bookingNotes');
+    const confirmBtnEl = document.getElementById('confirmBtn');
+
+    function attachBookingInputListeners() {
+      const inputs = [bookingNameEl, bookingEmailEl, bookingPhoneEl];
+      inputs.forEach(inp => {
+        if (!inp) return;
+        inp.addEventListener('input', updateConfirmButtonState);
+      });
+      updateConfirmButtonState();
+    }
+
+    attachBookingInputListeners();
+
+  // Search-by-reference handler
+  window.checkReference = async function() {
+    const refEl = document.getElementById('searchRef');
+    const btn = document.getElementById('checkRefBtn');
+    const resultsEl = document.getElementById('bookingCheckResults');
+    const contentEl = document.getElementById('bookingResultsContent');
+
+    if (!refEl) return;
+    const ref = refEl.value.trim();
+    if (!ref) {
+      showToast('⚠️ Please enter a reference number');
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      var prevText = btn.textContent;
+      btn.textContent = 'Checking...';
+    }
+
+    try {
+      const result = await callBackendAPI('get-booking-by-reference', { reference: ref });
+      console.log('Search result:', result);
+      
+      if (!result || !result.bookings || result.bookings.length === 0) {
+        if (contentEl) {
+          contentEl.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px;">🔎 Reference not found</div>';
+        }
+        if (resultsEl) resultsEl.style.display = 'block';
+        return;
+      }
+
+      const status = result.bookings.some(b => b.status === 'pending')
+        ? 'pending'
+        : result.bookings.some(b => b.status === 'paid')
+          ? 'paid'
+          : result.bookings[0]?.status || 'pending';
+      receiptBookingReference = ref;
+      const totalAmount = result.bookings.reduce((sum, b) => sum + (b.price || b.rate || 0), 0);
+      
+      let displayDate = 'N/A';
+      try {
+        const bookingDate = result.bookings[0]?.booking_date;
+        if (bookingDate) {
+          displayDate = formatDateDisplay(bookingDate);
+        }
+      } catch (dateErr) {
+        console.warn('Error formatting date:', dateErr);
+        displayDate = result.bookings[0]?.booking_date || 'N/A';
+      }
+
+      const courtGroups = {};
+      if (Array.isArray(result.bookings)) {
+        result.bookings.forEach(booking => {
+          const courtName = booking.court_name || booking.court || 'Court';
+          const timeSlot = booking.time_slot || booking.booking_time || 'Unknown time';
+          if (!courtGroups[courtName]) {
+            courtGroups[courtName] = [];
+          }
+          courtGroups[courtName].push(timeSlot);
+        });
+      }
+
+      const timeEmojis = ['🕚', '🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙'];
+      const courtSections = Object.entries(courtGroups).map(([court, times]) => {
+        const sortedTimes = times.slice().sort();
+        const timesHtml = sortedTimes.map((time, index) => `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span>${timeEmojis[index % timeEmojis.length]}</span>
+            <span style="color:#f8fafc;">${time}</span>
+          </div>
+        `).join('');
         return `
-          <div class="success-booking-item">
-            <div class="success-booking-item-info">
-              <div class="success-booking-item-title">${court}</div>
-              <div class="success-booking-item-meta">${parts[1]}</div>
-            </div>
-            <div class="success-booking-item-right">
-              <div class="success-booking-item-price">₱${price}</div>
-              <span class="status-badge pending">PENDING</span>
-            </div>
+          <div style="padding:12px;border-radius:12px;border:1px solid rgba(236,72,153,0.14);background:rgba(255,255,255,0.03);">
+            <div style="font-weight:700;color:#f8fafc;margin-bottom:8px;">🏟️ ${court}</div>
+            ${timesHtml}
           </div>
         `;
       }).join('');
-    }
-    if (refEl) refEl.textContent = bookingRef;
-    if (refElBottom) refElBottom.textContent = bookingRef;
-    if (expiryEl) expiryEl.textContent = 'Expires in 60:00';
-    if (saveCopyCheckbox) saveCopyCheckbox.checked = false;
-    if (paySection) paySection.style.display = 'none';
-    if (nextSteps) nextSteps.style.display = 'none';
-    if (bottomRef) bottomRef.style.display = 'none';
-    if (doneBtn) doneBtn.disabled = false;
 
-    bookingSubmissionTime = Date.now();
+      let resultHtml = '<div style="display:flex;flex-direction:column;gap:12px;">';
+      if (status === 'paid' || status === 'confirmed') {
+        resultHtml += `
+          <div style="text-align:center;padding:16px;border:2px solid #10b981;border-radius:12px;background:rgba(16,185,129,0.1);">
+            <div style="font-size:1.2rem;margin-bottom:8px;">✅ Booking Confirmed</div>
+            <div style="color:#a7f3d0;font-weight:700;">Reference: ${ref}</div>
+          </div>
+        `;
+      } else if (status === 'pending') {
+        resultHtml += `
+          <div style="text-align:center;padding:16px;border:2px solid #f59e0b;border-radius:12px;background:rgba(245,158,11,0.1);">
+            <div style="font-size:1.1rem;margin-bottom:8px;">⏳ Booking Pending Payment</div>
+            <div style="color:#fcd34d;">Payment required to confirm</div>
+          </div>
+        `;
+        receiptBookingTotal = totalAmount;
+        searchedBookingReference = ref;
+        searchedBookingData = result.bookings;
+
+        pendingBookingEntries = result.bookings.map(booking => ({
+          booking_date: booking.booking_date,
+          booking_time: booking.booking_time || booking.time_slot,
+          time_slot: booking.time_slot || booking.booking_time,
+          court: booking.court || booking.court_name,
+          court_name: booking.court_name || booking.court,
+          customer_name: booking.customer_name || '',
+          phone_number: booking.phone_number || '',
+          reference_code: booking.reference_code || ref,
+          price: booking.price || booking.rate || 0,
+          rate: booking.rate || booking.price || 0,
+          status: booking.status || 'pending',
+          notes: booking.notes,
+          fromExistingBooking: true,
+          persistedInDb: true
+        }));
+      }
+
+      resultHtml += `
+        <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:12px;border:1px solid rgba(236,72,153,0.14);">
+          <div style="font-size:1rem;margin-bottom:8px;">💳 Total Paid: ₱${totalAmount}</div>
+          <div style="font-size:1rem;">📅 Date: ${displayDate}</div>
+        </div>
+      `;
+      resultHtml += courtSections;
+      resultHtml += '</div>';
+
+      if (contentEl) contentEl.innerHTML = resultHtml;
+      if (resultsEl) resultsEl.style.display = 'block';
+
+    } catch (err) {
+      console.error('Search error:', err);
+      console.error('Error details:', {
+        message: err?.message,
+        status: err?.status,
+        body: err?.body,
+        stack: err?.stack
+      });
+      if (contentEl) {
+        const errorMsg = err?.message || 'Unknown error';
+        contentEl.innerHTML = `<div style="color:#f87171;text-align:center;padding:16px;">❌ Error: ${errorMsg}</div>`;
+      }
+      if (resultsEl) resultsEl.style.display = 'block';
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = prevText || 'Check Status';
+      }
+    }
   };
 
-  window.closeSuccessModal = function() {
-    document.getElementById('successModal').classList.remove('open');
-    bookingSubmissionTime = null;
+  receiptBookingReference = '';
+  receiptBookingTotal = 0;
+  // Receipt upload functionality removed - simplified to payment via Messenger only
+
+  let receiptTimerInterval = null;
+  let receiptModalTimeout = null;
+
+  function clearReceiptModalTimer() {
+    if (receiptTimerInterval) {
+      clearInterval(receiptTimerInterval);
+      receiptTimerInterval = null;
+    }
+    if (receiptModalTimeout) {
+      clearTimeout(receiptModalTimeout);
+      receiptModalTimeout = null;
+    }
+  }
+
+  window.triggerReceiptUpload = function() {
+    const input = document.getElementById('receiptFileInput');
+    if (input) input.click();
+  };
+
+  // Refresh available slots from server and re-render table
+  window.refreshSlots = async function() {
+    location.reload();
+  };
+
+  window.closeReceiptModal = function() {
+    // Receipt upload removed
+  };
+
+  function parseReceiptText() { return { reference: '', amount: null }; }
+  function setReceiptFields() {}
+  function getParsedReceiptData() { return { reference: '', amount: null }; }
+  function updateReceiptVerificationState() {}
+  function updateSuccessReceiptUploadState() {}
+  function clearReceiptModalTimer() {}
+  async function decodeReceiptImage() { return { canvas: null, dataUrl: '' }; }
+
+  window.handleReceiptFile = function() {
+    showToast('Receipt upload has been simplified. Please pay via Messenger with your booking reference.');
+  };
+
+  window.clearReceiptUpload = function() {
+    // Receipt upload removed
+  };
+
+  // NOTE: For full protection against race conditions, add a unique DB constraint
+  // on bookings(booking_date, time_slot, court) in Supabase. This front-end check helps
+  // catch conflicts early, but the database constraint is the final guard.
+  // Example SQL for Supabase SQL editor:
+  // ALTER TABLE bookings
+  //   ADD CONSTRAINT bookings_unique_slot
+  //   UNIQUE (booking_date, time_slot, court);
+  async function checkSlotAvailability(entries) {
+    if (!entries || entries.length === 0) {
+      return { ok: true, conflicts: [] };
+    }
+
+    const date = entries[0].booking_date;
+    if (!date) {
+      return { ok: false, conflicts: [] };
+    }
+
+    try {
+      const result = await callBackendAPI('get-booked-slots', { bookingDate: date });
+      
+      const bookedMap = new Map();
+      (result.bookings || []).forEach(row => {
+        if (row.booking_date && row.time_slot && row.court) {
+          bookedMap.set(`${row.booking_date}|${row.time_slot}|${row.court}`, row);
+        }
+      });
+
+      const conflicts = entries.filter(entry => {
+        const key = `${entry.booking_date}|${entry.booking_time}|${entry.court}`;
+        return bookedMap.has(key);
+      }).map(entry => ({
+        booking_date: entry.booking_date,
+        booking_time: entry.booking_time,
+        court: entry.court
+      }));
+
+      return { ok: conflicts.length === 0, conflicts };
+    } catch (err) {
+      console.error('checkSlotAvailability error:', err);
+      return { ok: false, conflicts: [], error: err };
+    }
+  }
+
+  window.verifyReceipt = function() {
+    showToast('Payment processing via Messenger. Please send your booking reference and GCash receipt proof.');
+  };
+
+  // Detect mobile/touch devices (Android, iOS, etc.)
+  const isMobileDevice = () => {
+    return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+  };
+
+  // Close modal on overlay click (DISABLED on mobile/touch devices)
+  document.getElementById('bookingModal').onclick = function(e) {
+    if (e.target === this && !isMobileDevice()) closeModal();
+  };
+  document.getElementById('confirmModal').onclick = function(e) {
+    if (e.target === this && !isMobileDevice()) closeConfirmModal();
+  };
+  document.getElementById('successModal').onclick = function(e) {
+    if (e.target === this && !isMobileDevice()) closeSuccessModal();
   };
 
   // Initialize
   renderCalendar();
   loadAndRenderTable();
 
+  // Track booking submission time for timer
   let bookingSubmissionTime = null;
+  // Polling interval id for checking backend confirmations of pending slots
   let pendingPollInterval = null;
   let renderTableTimeout = null;
   
@@ -818,14 +1623,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       } catch (e) {
         console.error('Pending poll load failed', e);
       }
-    }, 10000);
+    }, 10000); // poll every 10s (reduced from 5s) while pending slots exist
   }
 
+  // Update timer display every second
   setInterval(() => {
     const now = Date.now();
     const sixtyMins = 60 * 60 * 1000;
     let tableNeedsRefresh = false;
 
+    // Remove expired pending timers and update button labels directly.
     Object.keys(pendingSlotsWithTimer).forEach(key => {
       if (now - pendingSlotsWithTimer[key] >= sixtyMins) {
         delete pendingSlotsWithTimer[key];
@@ -839,6 +1646,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderTable();
     }
 
+    // Update payment/booking modal timer (15 minutes) if modal is open
     if (bookingSubmissionTime) {
       const elapsed = now - bookingSubmissionTime;
       const thirtyMins = 30 * 60 * 1000;
@@ -858,201 +1666,4 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   }, 1000);
-
-  const attachKeyboardScroll = (inputEl) => {
-    if (!inputEl || inputEl.dataset.keyboardScrollAttached === 'true') return;
-    const scrollHandler = () => {
-      setTimeout(() => {
-        if (document.activeElement !== inputEl) return;
-        const modal = inputEl.closest('.modal');
-        if (modal) {
-          const inputRect = inputEl.getBoundingClientRect();
-          const modalRect = modal.getBoundingClientRect();
-          const topGap = inputRect.top - modalRect.top;
-          const bottomGap = modalRect.bottom - inputRect.bottom;
-          if (topGap < 120 || bottomGap < 180) {
-            const scrollAmount = topGap - 120;
-            modal.scrollBy({ top: scrollAmount, behavior: 'smooth' });
-          }
-        }
-        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      }, 220);
-    };
-    inputEl.addEventListener('focus', scrollHandler);
-    inputEl.addEventListener('touchstart', scrollHandler);
-    inputEl.dataset.keyboardScrollAttached = 'true';
-  };
-
-  const ensureInputVisible = (inputEl) => {
-    if (!inputEl) return;
-    setTimeout(() => {
-      if (document.activeElement !== inputEl) return;
-      const modal = inputEl.closest('.modal');
-      if (modal) {
-        const inputRect = inputEl.getBoundingClientRect();
-        const modalRect = modal.getBoundingClientRect();
-        const topGap = inputRect.top - modalRect.top;
-        const bottomGap = modalRect.bottom - inputRect.bottom;
-        if (topGap < 120 || bottomGap < 180) {
-          const scrollAmount = topGap - 120;
-          modal.scrollBy({ top: scrollAmount, behavior: 'smooth' });
-        }
-      }
-      inputEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-    }, 240);
-  };
-
-  function updateCheckButtonState() {
-    const btn = document.getElementById('checkRefBtn');
-    const ref = document.getElementById('searchRef');
-    if (!btn) return;
-    btn.disabled = !ref || !ref.value.trim();
-  }
-
-  const searchInputEl = document.getElementById('searchRef');
-  if (searchInputEl) {
-    searchInputEl.addEventListener('input', updateCheckButtonState);
-    searchInputEl.addEventListener('keyup', (e) => {
-      if (e.key === 'Enter') {
-        const btn = document.getElementById('checkRefBtn');
-        if (btn && !btn.disabled) checkReference();
-      }
-    });
-  }
-
-  window.checkReference = async function() {
-    const refEl = document.getElementById('searchRef');
-    const btn = document.getElementById('checkRefBtn');
-    const resultsEl = document.getElementById('bookingCheckResults');
-    const contentEl = document.getElementById('bookingResultsContent');
-
-    if (!refEl) return;
-    const ref = refEl.value.trim();
-    if (!ref) {
-      showToast('⚠️ Please enter a reference number');
-      return;
-    }
-
-    if (btn) {
-      btn.disabled = true;
-      var prevText = btn.textContent;
-      btn.textContent = 'Checking...';
-    }
-
-    try {
-      const result = await callBackendAPI('get-booking-by-reference', { reference: ref });
-      if (!result || !result.bookings || result.bookings.length === 0) {
-        if (contentEl) {
-          contentEl.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px;">🔎 Reference not found</div>';
-        }
-        if (resultsEl) resultsEl.style.display = 'block';
-        return;
-      }
-
-      if (contentEl) {
-        contentEl.innerHTML = '<div style="color:#257C36;text-align:center;padding:16px;">✅ Booking found</div>';
-      }
-      if (resultsEl) resultsEl.style.display = 'block';
-
-    } catch (err) {
-      console.error('Search error:', err);
-      if (contentEl) {
-        const errorMsg = err?.message || 'Unknown error';
-        contentEl.innerHTML = `<div style="color:#f87171;text-align:center;padding:16px;">❌ Error: ${errorMsg}</div>`;
-      }
-      if (resultsEl) resultsEl.style.display = 'block';
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = prevText || 'Check Status';
-      }
-    }
-  };
-
-  window.submitBooking = async function() {
-    const confirmBtn = document.getElementById('confirmBtn') || document.getElementById('confirmModalBtn');
-    if (confirmBtn && confirmBtn.disabled) {
-      showToast('⏱️ Please wait - your booking is being submitted...');
-      return;
-    }
-    
-    if (confirmBtn) {
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = 'Processing...';
-    }
-    
-    if (selectedSlots.size === 0) {
-      showToast('⚠️ Please select at least one time slot');
-      if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Next';
-      }
-      return;
-    }
-
-    const nameInput = document.getElementById('confirmName');
-    const phoneInput = document.getElementById('confirmPhone');
-    const name = nameInput ? sanitizeName(nameInput.value).trim() : '';
-    const phone = phoneInput ? sanitizePhone(phoneInput.value).trim() : '';
-
-    if (!isValidConfirmName(name) || !isValidConfirmPhone(phone)) {
-      showToast('⚠️ Please enter a valid name and 10-digit phone number');
-      if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Next';
-      }
-      return;
-    }
-
-    const bookingRef = `DACI-${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
-    const bookings = [...selectedSlots].map(key => {
-      const [date, slot, courtIndex] = key.split('|');
-      const courtName = COURTS[Number(courtIndex)] || 'Court';
-      const price = getRate(slot, date);
-      return {
-        booking_date: date,
-        booking_time: slot,
-        time_slot: slot,
-        court: courtName,
-        court_name: courtName,
-        customer_name: name,
-        phone_number: phone,
-        reference_code: bookingRef,
-        status: 'pending',
-        price,
-        rate: price
-      };
-    });
-
-    try {
-      const result = await callBackendAPI('bulk-insert-bookings', { bookings });
-      if (!result || !result.success) {
-        throw new Error(result?.error || 'Booking save failed');
-      }
-
-      receiptBookingReference = bookingRef;
-      receiptBookingTotal = bookings.reduce((sum, booking) => sum + booking.price, 0);
-      showToast('✅ Booking submitted!');
-      closeConfirmModal();
-      populateSuccessModal();
-      openSuccessModal();
-    } catch (err) {
-      console.error('Booking error:', err);
-      const message = err.message || 'Please try again.';
-      if (err.status === 409) {
-        window.alert(message);
-      }
-      showToast(`Booking failed: ${message}`);
-      if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Next';
-      }
-      return;
-    }
-
-    if (confirmBtn) {
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Next';
-    }
-  };
 });
