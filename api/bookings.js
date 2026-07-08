@@ -9,6 +9,15 @@ const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SER
 let supabase = null;
 let supabaseInitError = null;
 
+export const PENDING_EXPIRY_MS = 60 * 60 * 1000;
+
+export function isPendingBookingExpired(createdAt) {
+  if (!createdAt) return false;
+  const ts = Date.parse(createdAt);
+  if (Number.isNaN(ts)) return false;
+  return Date.now() - ts >= PENDING_EXPIRY_MS;
+}
+
 if (!supabaseUrl || !supabaseKey) {
   supabaseInitError = {
     message: 'Supabase configuration missing. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY in Vercel environment variables.',
@@ -68,14 +77,20 @@ export default async function handler(req, res) {
 
       const { data, error } = await supabase
         .from('bookings')
-        .select('time_slot,court,customer_name,status,receipt_reference,created_at')
+        .select('id,time_slot,court,customer_name,status,receipt_reference,created_at')
         .eq('booking_date', bookingDate);
       
       if (error) throw error;
+
+      const visibleBookings = (data || []).filter(row => {
+        const status = (row.status || '').toString().toLowerCase();
+        if (status !== 'pending') return true;
+        return !isPendingBookingExpired(row.created_at);
+      });
       
       return res.status(200).json({ 
         success: true,
-        bookings: data || []
+        bookings: visibleBookings
       });
     }
 
@@ -128,55 +143,22 @@ export default async function handler(req, res) {
       }
 
       // Validate and sanitize each booking
-      const validatedBookings = bookings.map((booking, index) => {
-        const sharedReference = String(booking.notes || booking.receipt_reference || booking.reference_code || `DACI-${Date.now()}-${index + 1}`).substring(0, 50);
-        const rowReference = String(booking.reference_code || `${sharedReference}-${index + 1}`).substring(0, 50);
-        const noteText = String(sharedReference).substring(0, 500);
-
-        return {
-          booking_date: booking.booking_date,
-          booking_time: booking.booking_time || booking.time_slot,
-          time_slot: booking.time_slot || booking.booking_time,
-          court: booking.court || booking.court_name,
-          court_name: booking.court_name || booking.court,
-          customer_name: String(booking.customer_name || '').substring(0, 100),
-          phone_number: String(booking.phone_number || '').substring(0, 20),
-          reference_code: String(rowReference).substring(0, 50),
-          receipt_reference: booking.receipt_reference ? String(booking.receipt_reference).substring(0, 50) : null,
-          status: booking.status || 'pending',
-          price: booking.price || 0,
-          rate: booking.rate || 0,
-          notes: noteText || null,
-          created_at: new Date().toISOString()
-        };
-      });
-
-      // Prevent double booking on the same slot by another customer
-      const conflicts = [];
-      for (const booking of validatedBookings) {
-        const { data: existing, error: existingError } = await supabase
-          .from('bookings')
-          .select('customer_name,booking_date,time_slot,court')
-          .match({
-            booking_date: booking.booking_date,
-            time_slot: booking.time_slot,
-            court: booking.court
-          })
-          .limit(1);
-
-        if (existingError) throw existingError;
-        if (existing && existing.length > 0) {
-          conflicts.push(existing[0]);
-        }
-      }
-
-      if (conflicts.length > 0) {
-        const conflictMessages = conflicts.map(conflict => `${conflict.customer_name} on ${conflict.booking_date} ${conflict.time_slot} (${conflict.court})`).join('; ');
-        return res.status(409).json({
-          error: 'Slot conflict',
-          message: `One or more selected slots are already booked by another customer: ${conflictMessages}`
-        });
-      }
+      const validatedBookings = bookings.map(booking => ({
+        booking_date: booking.booking_date,
+        booking_time: booking.booking_time || booking.time_slot,
+        time_slot: booking.time_slot || booking.booking_time,
+        court: booking.court || booking.court_name,
+        court_name: booking.court_name || booking.court,
+        customer_name: String(booking.customer_name || '').substring(0, 100),
+        phone_number: String(booking.phone_number || '').substring(0, 20),
+        reference_code: String(booking.reference_code || '').substring(0, 50),
+        receipt_reference: booking.receipt_reference ? String(booking.receipt_reference).substring(0, 50) : null,
+        status: booking.status || 'pending',
+        price: booking.price || 0,
+        rate: booking.rate || 0,
+        notes: booking.notes ? String(booking.notes).substring(0, 500) : null,
+        created_at: new Date().toISOString()
+      }));
 
       const { data, error } = await supabase
         .from('bookings')
@@ -202,20 +184,14 @@ export default async function handler(req, res) {
 
       const { data, error } = await supabase
         .from('bookings')
-        .select('*');
+        .select('*')
+        .eq('reference_code', reference);
       
       if (error) throw error;
-
-      const normalizedReference = String(reference).trim();
-      const matchedBookings = (data || []).filter(booking => {
-        const rowReference = String(booking.reference_code || '');
-        const sharedReference = String(booking.receipt_reference || booking.notes || '');
-        return rowReference === normalizedReference || sharedReference === normalizedReference || sharedReference.includes(normalizedReference);
-      });
       
       return res.status(200).json({ 
         success: true,
-        bookings: matchedBookings || []
+        bookings: data || []
       });
     }
 
@@ -250,29 +226,13 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'reference_code and receipt_reference are required' });
       }
 
-      const { data: allRows, error: fetchError } = await supabase
-        .from('bookings')
-        .select('id,reference_code,receipt_reference,notes');
-      
-      if (fetchError) throw fetchError;
-
-      const matchingIds = (allRows || []).filter(booking => {
-        const rowReference = String(booking.reference_code || '');
-        const sharedReference = String(booking.notes || booking.receipt_reference || '');
-        return rowReference === reference_code || sharedReference === reference_code || sharedReference.includes(reference_code);
-      }).map(booking => booking.id);
-
-      if (matchingIds.length === 0) {
-        return res.status(200).json({ success: true, updated: 0, bookings: [] });
-      }
-
       const { data, error } = await supabase
         .from('bookings')
         .update({
           receipt_reference: receipt_reference,
           status: status || 'paid'
         })
-        .in('id', matchingIds)
+        .eq('reference_code', reference_code)
         .select();
       
       if (error) throw error;
