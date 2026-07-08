@@ -124,14 +124,14 @@ function populateSuccessModal() {
       return `
         <div style="display:flex;align-items:center;gap:8px;margin:6px 0;">
           <span>${timeEmojis[index % timeEmojis.length]}</span>
-          <span style="color:#f8fafc;font-size:0.95rem;">${time}</span>
+          <span style="color:#000000;font-size:0.95rem;">${time}</span>
         </div>
       `;
     }).join('');
     
     return `
       <div style="padding:12px;border-radius:12px;border:1px solid rgba(236,72,153,0.14);background:rgba(255,255,255,0.03);margin-bottom:10px;">
-        <div style="font-weight:700;color:#f8fafc;margin-bottom:8px;">🏟️ ${court}</div>
+        <div style="font-weight:700;color:#000000;margin-bottom:8px;">🏟️ ${court}</div>
         ${timesHtml}
       </div>
     `;
@@ -1138,7 +1138,7 @@ Phone: ${firstBooking.phone_number || ''}
 
     try {
       // Generate booking reference
-      const refCode = 'PKL-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const refCode = 'DACI-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
 
       // Prepare booking data and keep it pending until receipt verification
       pendingBookingEntries = [...selectedSlots].map(key => {
@@ -1401,12 +1401,12 @@ Phone: ${firstBooking.phone_number || ''}
         const timesHtml = sortedTimes.map((time, index) => `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             <span>${timeEmojis[index % timeEmojis.length]}</span>
-            <span style="color:#f8fafc;">${time}</span>
+              <span style="color:#000000;">${time}</span>
           </div>
         `).join('');
         return `
           <div style="padding:12px;border-radius:12px;border:1px solid rgba(236,72,153,0.14);background:rgba(255,255,255,0.03);">
-            <div style="font-weight:700;color:#f8fafc;margin-bottom:8px;">🏟️ ${court}</div>
+            <div style="font-weight:700;color:#000000;margin-bottom:8px;">🏟️ ${court}</div>
             ${timesHtml}
           </div>
         `;
