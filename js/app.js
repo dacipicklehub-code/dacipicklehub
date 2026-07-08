@@ -127,7 +127,13 @@ window.showBrowserNoticeModal = function() {
 
 window.getInitials = function(name) {
   if (!name) return '?';
-  return String(name).split(' ').map(n => n[0] || '').join('').slice(0, 2).toUpperCase();
+  return String(name)
+    .split(' ')
+    .filter(Boolean)
+    .map(n => n[0] || '')
+    .slice(0, 3)
+    .join('')
+    .toUpperCase();
 };
 
 // Show mobile browser notice on page load
