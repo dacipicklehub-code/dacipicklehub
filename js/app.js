@@ -1038,7 +1038,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       openSuccessModal();
     } catch (err) {
       console.error('Booking error:', err);
-      showToast(`Booking failed: ${err.message || 'Please try again.'}`);
+      const message = err.message || 'Please try again.';
+      if (err.status === 409) {
+        window.alert(message);
+      }
+      showToast(`Booking failed: ${message}`);
       if (confirmBtn) {
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Next';
