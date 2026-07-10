@@ -15,8 +15,14 @@ const WEEKEND_RATE = 250; // Regular weekend rate (Sat-Sun)
 
 // Blocked dates (YYYY-MM-DD format)
 const BLOCKED_DATES = [
-  '2026-06-23', // June 23, 2026
-  '2026-06-24'  // June 24, 2026
+  '2026-07-10', // July 10, 2026
+  '2026-07-11', // July 11, 2026
+  '2026-07-12', // July 12, 2026
+  '2026-07-13', // July 13, 2026
+  '2026-07-14', // July 14, 2026
+  '2026-07-15', // July 15, 2026
+  '2026-07-16', // July 16, 2026
+  '2026-07-17'  // July 17, 2026
 ];
 
 // Legacy flag removed - pricing is now based on weekday vs weekend
@@ -333,8 +339,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderTable();
   }
 
-  // Slot definitions: different schedules for weekdays (Mon-Fri) and weekends (Sat-Sun)
-  const WEEKDAY_SLOTS = [
+  // Slot definitions: different schedules for Monday-Thursday, Friday, Saturday, and Sunday
+  const MON_THU_SLOTS = [
     '4PM - 5PM',
     '5PM - 6PM',
     '6PM - 7PM',
@@ -343,12 +349,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     '9PM - 10PM'
   ];
 
-  const WEEKEND_SLOTS = [
+  const FRIDAY_SLOTS = [
+    '4PM - 5PM',
+    '5PM - 6PM',
+    '6PM - 7PM',
+    '7PM - 8PM',
+    '8PM - 9PM',
+    '9PM - 10PM',
+    '10PM - 11PM',
+    '11PM - 12AM'
+  ];
+
+  const SATURDAY_SLOTS = [
     '8AM - 9AM',
     '9AM - 10AM',
     '10AM - 11AM',
     '11AM - 12PM',
     '12PM - 1PM',
+    '1PM - 2PM',
+    '2PM - 3PM',
+    '3PM - 4PM',
+    '4PM - 5PM',
+    '5PM - 6PM',
+    '6PM - 7PM',
+    '7PM - 8PM',
+    '8PM - 9PM',
+    '9PM - 10PM',
+    '10PM - 11PM',
+    '11PM - 12AM'
+  ];
+
+  const SUNDAY_SLOTS = [
     '1PM - 2PM',
     '2PM - 3PM',
     '3PM - 4PM',
@@ -363,8 +394,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   function getSlotsForDate(d) {
     const dateObj = (typeof d === 'string' || typeof d === 'number') ? new Date(d) : d;
     const day = dateObj.getDay(); // 0=Sun,1=Mon,...6=Sat
-    if (day >= 1 && day <= 5) return WEEKDAY_SLOTS;
-    return WEEKEND_SLOTS;
+    if (day >= 1 && day <= 4) return MON_THU_SLOTS;
+    if (day === 5) return FRIDAY_SLOTS;
+    if (day === 6) return SATURDAY_SLOTS;
+    return SUNDAY_SLOTS;
   }
 
   const COURTS = ['Court One', 'Court Two'];
