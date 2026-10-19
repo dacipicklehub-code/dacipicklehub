@@ -257,6 +257,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Booked slots cache for the current selectedDate
   let bookedSlots = {};
+  let blockedSlots = {};
 
   // Check if a date is blocked from bookings
   function isDateBlocked(dateStr) {
@@ -289,6 +290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Load booked slots from backend API for a specific dateKey (YYYY-MM-DD)
   async function loadBookedSlotsForDate(dk) {
     bookedSlots = {};
+    blockedSlots = {};
     try {
       const result = await callBackendAPI('get-booked-slots', { bookingDate: dk });
       if (result.bookings && Array.isArray(result.bookings)) {
@@ -296,30 +298,29 @@ document.addEventListener("DOMContentLoaded", async () => {
           const courtIndex = COURTS.indexOf(row.court);
           if (courtIndex >= 0 && row.time_slot) {
             const status = (row.status || '').toString().toLowerCase();
-
             const key = `${dk}|${row.time_slot}|${courtIndex}`;
 
+            if (status === 'blocked') {
+              blockedSlots[key] = true;
+              return;
+            }
+
             if (status === 'pending') {
-              // Reconstruct pending timer from backend `created_at` so the timer
-              // persists across page reloads. Use created_at fallback to now.
               let ts = Date.now();
               try {
                 if (row.created_at) ts = new Date(row.created_at).getTime() || Date.now();
               } catch (e) {
                 ts = Date.now();
               }
-              // Only set pending timer if still within 60 minutes window
               const sixtyMins = 60 * 60 * 1000;
               if ((Date.now() - ts) < sixtyMins) {
                 pendingSlotsWithTimer[key] = ts;
-              } else {
-                // expired on backend; ensure no pending marker left
-                if (pendingSlotsWithTimer[key]) delete pendingSlotsWithTimer[key];
+              } else if (pendingSlotsWithTimer[key]) {
+                delete pendingSlotsWithTimer[key];
               }
               return;
             }
 
-            // Confirmed booking: mark as booked and clear any local pending marker
             bookedSlots[key] = row.customer_name || 'Unknown';
             if (pendingSlotsWithTimer[key]) delete pendingSlotsWithTimer[key];
           }
@@ -327,7 +328,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (e) {
       console.error('loadBookedSlotsForDate error', e);
-      // Don't block UI; show a subtle toast if connection failed
       showToast('Could not load bookings (offline)');
     }
   }
@@ -614,8 +614,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Check if slot is in the past (only for today)
         const pastSlot = isSlotPast(dk, slot);
 
+        if (blockedSlots[key]) {
+          btn.classList.add('slot-blocked');
+          btn.textContent = 'Blocked';
+          btn.disabled = true;
+        }
         // If the slot is booked in Supabase, mark as booked and show initials
-        if (bookedSlots[key]) {
+        else if (bookedSlots[key]) {
           btn.classList.add('slot-booked');
           btn.textContent = getInitials(bookedSlots[key]);
           btn.disabled = true;
