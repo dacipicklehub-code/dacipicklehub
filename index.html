@@ -55,7 +55,7 @@
         <source srcset="/court2.jpg" media="(max-width: 1024px)">
         <img src="/COURT.jpeg" alt="DACI Pickle Hub court view" class="main-photo-image">
       </picture>
-      <span class="court-label">📸 Court View</span>
+      <span class="court-label">Court View</span>
     </div>
     <div class="photo-mini">
       <img src="/court1.jpg" alt="Court view 1" class="photo-mini-image">
@@ -69,11 +69,20 @@
 
   <div class="venue-header">
     <h1>Book a Court at DACI Pickle Hub</h1>
-    <p class="venue-motto">Building friendships, staying active, sharing good moments, and growing together—one game at a time. 💚</p>
+    <p class="venue-motto">Building friendships, staying active, sharing good moments, and growing together—one game at a time.</p>
     <div class="venue-meta">
-      <span>📍 <a href="https://maps.app.goo.gl/JxxJwKDkynPEjM436" target="_blank" rel="noreferrer" style="color:#257C36;">Davao Alliance Bible College</a></span>
-      <span>🕒 Monday – Sunday (see selected time slot) only allow that time slot</span>
-      <span>📞 <a href="tel:+639173075609" style="color:#257C36; text-decoration:none;">+63 917 307 5609</a></span>
+      <span>
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-4.35 9-9.09C22.77 8.95 20.88 4 16.5 4A5.5 5.5 0 0 0 12 6.18 5.5 5.5 0 0 0 7.5 4C3.12 4 .23 8.95 3 11.91 6 16.65 12 21 12 21Z"/></svg>
+        <a href="https://maps.app.goo.gl/JxxJwKDkynPEjM436" target="_blank" rel="noreferrer" style="color:#257C36;">Davao Alliance Bible College</a>
+      </span>
+      <span>
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Zm0 4.5v4.2l3.4 2.1"/><path d="M7 4.5h10"/></svg>
+        Monday – Sunday (see selected time slot) only allow that time slot
+      </span>
+      <span>
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h4.2l1.7 4.3-2.1 1.5a12.7 12.7 0 0 0 6.9 6.9l1.5-2.1 4.3 1.7v4.2a1.8 1.8 0 0 1-1.8 1.8A17.4 17.4 0 0 1 6.5 6.3a1.8 1.8 0 0 1 1.8-1.8Z"/></svg>
+        <a href="tel:+639173075609" style="color:#257C36; text-decoration:none;">+63 917 307 5609</a>
+      </span>
     </div>
   </div>
 
@@ -83,7 +92,10 @@
     <div class="rate">Saturday (8:00 AM – Midnight)</div>
      <div class="rate">Sunday (1:00 PM – 10:00 PM)</div>
     <div class="note">Sunday: Ministry Partners</div>
-    <div style="margin-top: 12px; padding: 12px; background: rgba(37, 124, 54, 0.12); border-radius: 8px; font-size: 0.85em; color: #257C36; border-left: 3px solid #257C36;">📢 <strong>Hourly rate:</strong> ₱250/hour</div>
+    <div class="rate-badge">
+      <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5V8.8A2.8 2.8 0 0 1 6.8 6h10.4A2.8 2.8 0 0 1 20 8.8v3.7A2.8 2.8 0 0 1 17.2 15H8.8L4 19v-6.5Z"/><path d="M8 9.5h8M8 12.5h6"/></svg>
+      <strong>Hourly rate:</strong> ₱250/hour
+    </div>
   </div>
 
   <div class="booking-section">
@@ -104,7 +116,10 @@
 
     <div class="table-panel">
         <div class="table-header">
-          <h2>📅 <span id="selectedDateLabel"></span></h2>
+          <h2>
+            <svg class="inline-icon table-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5v2.2M17 3.5v2.2M4.5 8.5h15M6 5.5h12A1.5 1.5 0 0 1 19.5 7v10.5A1.5 1.5 0 0 1 18 19H6a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 6 5.5Z"/></svg>
+            <span id="selectedDateLabel"></span>
+          </h2>
           <div style="color:#A8AFB6;font-size:0.9rem;font-weight:600;">Tap available slots to select multiple.</div>
           <button class="btn-primary" id="refreshBtn">Refresh</button>
         </div>
@@ -218,7 +233,9 @@
 <div class="modal-overlay" id="bookingModal">
   <div class="modal">
     <div class="modal-top">
-      <div class="check-icon">📋</div>
+      <div class="check-icon">
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.8h8A2.8 2.8 0 0 1 18.8 7.6v9.8A2.8 2.8 0 0 1 16 20.2H8a2.8 2.8 0 0 1-2.8-2.8V7.6A2.8 2.8 0 0 1 8 4.8Zm0 4.7h8M8 13.2h5"/></svg>
+      </div>
       <h2>Check Your Booking</h2>
     </div>
     <p class="subtitle">Review your selections and provide contact details</p>
@@ -240,8 +257,9 @@
     </div>
 
     <div style="margin-top:16px; padding:12px; background:rgba(37, 124, 54, 0.12); border-radius:8px; border-left:3px solid #257C36;">
-      <p style="margin:0; font-size:0.9em; color:#257C36;">
-        <strong>💬 Payment Note:</strong> If you've already paid, please send your Booking Reference and Receipt to us via Messenger for verification.
+      <p style="margin:0; font-size:0.9em; color:#257C36; display:flex; align-items:center; gap:8px;">
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;"><path d="M6 17.5V9.8A2.8 2.8 0 0 1 8.8 7h10.4A2.8 2.8 0 0 1 22 9.8v5.4A2.8 2.8 0 0 1 19.2 18H9.8L6 21v-3.5Zm2.2-7.7h8.6M8.2 12.3h6.9"/></svg>
+        <strong>Payment Note:</strong> If you've already paid, please send your Booking Reference and Receipt to us via Messenger for verification.
       </p>
     </div>
 
@@ -270,14 +288,17 @@
       <div id="confirmSlotsContainer" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
       </div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;background:rgba(31,95,67,0.04);margin-bottom:12px;">
         <div style="color:#A8AFB6">Total (<span id="confirmCount">0</span> slot)</div>
         <div id="confirmTotal" style="font-weight:800;color:var(--accent);">₱0</div>
       </div>
 
-      <div style="background:linear-gradient(90deg, rgba(37,124,54,0.08), rgba(255,255,255,0.01));border-left:4px solid rgba(37,124,54,0.25);padding:12px;border-radius:8px;color:#E1E4E6;margin-bottom:12px;">
-        <div style="font-weight:700;color:#257C36;margin-bottom:6px;">⏱ Pending bookings expire in 60 minutes if not confirmed.</div>
-        <div style="color:#A8AFB6">Please complete payment promptly.</div>
+      <div style="background:linear-gradient(90deg, rgba(31,95,67,0.08), rgba(255,255,255,0.01));border-left:4px solid rgba(31,95,67,0.2);padding:12px;border-radius:8px;color:#1f2937;margin-bottom:12px;">
+        <div style="font-weight:700;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+          <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;"><path d="M12 2.8v7.1l4.2 2.4M12 2.8a9.2 9.2 0 1 1 0 18.4 9.2 9.2 0 0 1 0-18.4Z"/></svg>
+          Pending bookings expire in 60 minutes if not confirmed.
+        </div>
+        <div style="color:#5a6978">Please complete payment promptly.</div>
       </div>
 
       <div class="form-group">
