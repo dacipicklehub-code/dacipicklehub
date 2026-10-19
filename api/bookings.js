@@ -87,10 +87,25 @@ export default async function handler(req, res) {
         if (status !== 'pending') return true;
         return !isPendingBookingExpired(row.created_at);
       });
+
+      const { data: blockedSlotsData, error: blockedSlotsError } = await supabase
+        .from('blocked_time_slots')
+        .select('time_slot, court')
+        .eq('blocked_date', bookingDate);
+
+      if (blockedSlotsError) throw blockedSlotsError;
+
+      const blockedEntries = (blockedSlotsData || []).map(row => ({
+        time_slot: row.time_slot,
+        court: row.court,
+        customer_name: 'Blocked',
+        status: 'blocked',
+        created_at: null
+      }));
       
       return res.status(200).json({ 
         success: true,
-        bookings: visibleBookings
+        bookings: [...visibleBookings, ...blockedEntries]
       });
     }
 
@@ -105,6 +120,21 @@ export default async function handler(req, res) {
       // Validate input to prevent injection
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) {
         return res.status(400).json({ error: 'Invalid date format' });
+      }
+
+      const { data: blockedSlot, error: blockedSlotError } = await supabase
+        .from('blocked_time_slots')
+        .select('id')
+        .eq('blocked_date', bookingDate)
+        .eq('time_slot', timeSlot)
+        .eq('court', court)
+        .limit(1);
+
+      if (blockedSlotError) throw blockedSlotError;
+      if (blockedSlot && blockedSlot.length > 0) {
+        return res.status(409).json({
+          error: 'This time slot is blocked and unavailable for booking.'
+        });
       }
 
       const { data, error } = await supabase
@@ -193,6 +223,56 @@ export default async function handler(req, res) {
         success: true,
         bookings: data || []
       });
+    }
+
+    // Check availability for multiple slots before booking
+    if (action === 'check-slots-availability') {
+      const { slots } = req.body;
+      if (!slots || !Array.isArray(slots) || slots.length === 0) {
+        return res.status(400).json({ error: 'Missing required fields: slots array' });
+      }
+
+      const conflicts = [];
+      for (const s of slots) {
+        const bookingDate = s.booking_date || s.bookingDate;
+        const timeSlot = s.time_slot || s.timeSlot;
+        const court = s.court || s.court_name;
+        if (!bookingDate || !timeSlot || !court) continue;
+
+        const { data: existing, error: existingError } = await supabase
+          .from('bookings')
+          .select('customer_name,booking_date,time_slot,court,status')
+          .match({ booking_date: bookingDate, time_slot: timeSlot, court: court })
+          .limit(1);
+
+        if (existingError) throw existingError;
+        if (existing && existing.length > 0) {
+          conflicts.push({ ...existing[0], conflict_type: 'booked' });
+          continue;
+        }
+
+        const { data: blocked, error: blockedError } = await supabase
+          .from('blocked_time_slots')
+          .select('blocked_date,time_slot,court')
+          .eq('blocked_date', bookingDate)
+          .eq('time_slot', timeSlot)
+          .eq('court', court)
+          .limit(1);
+
+        if (blockedError) throw blockedError;
+        if (blocked && blocked.length > 0) {
+          conflicts.push({
+            customer_name: 'Blocked',
+            booking_date: bookingDate,
+            time_slot: timeSlot,
+            court,
+            status: 'blocked',
+            conflict_type: 'blocked'
+          });
+        }
+      }
+
+      return res.status(200).json({ success: true, conflicts });
     }
 
     // Check if receipt reference already exists
